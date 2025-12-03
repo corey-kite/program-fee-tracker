@@ -4,9 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Program Fee Tracker</title>
-  
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M32 14L12 32h6v18h28V32h6z' fill='%23fff'/%3E%3C/svg%3E" />
-  
   <style>
     :root { --yvr-c: #2D4F6C; --yvr-b: #6B8E42; --yvr-a: #8BB9C8; --tnh-c: #2563eb; --tnh-b: #8B8000; --tnh-a: #0ea5e9; --all-c: #228B22; --all-b: #9370DB; --all-a: #8B8000; --brand1: var(--yvr-c); --brand2: var(--yvr-a); --brand3: var(--yvr-b); --bg: #f7f7fb; --txt: #0f172a; --muted: #64748b; --card: #fff; --ring: #dbe2ea; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --load-bg: #e2e8f0; --fee-bg: #fee2e2; --fee-txt: #991b1b; }
     * { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--txt); font: 14px/1.5 Inter, system-ui, -apple-system, sans-serif; }
@@ -66,7 +64,6 @@
     .auto-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     @keyframes fade { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 20px); } }
     
-    /* DEBUG BAR */
     #debug-bar { position:fixed; top:0; left:0; width:100%; background:#1e293b; color:#fff; font-size:11px; padding:4px 16px; z-index:9999; display:flex; justify-content:space-between; }
     #error-box { display:none; position:fixed; top:30px; left:0; width:100%; background:#fee2e2; color:#b91c1c; padding:20px; z-index:9998; border-bottom:2px solid #ef4444; text-align:center; font-weight:bold; }
   </style>
@@ -87,157 +84,48 @@
   <div id="root"></div>
 
   <script type="text/babel" data-presets="env,react">
-    /* --- ERROR HANDLING & DEBUG --- */
-    const updateDebug = (status, details) => {
-        const bar = document.getElementById('debug-bar');
-        if(bar) bar.innerHTML = `<span>${status}</span><span>${details}</span>`;
-    }
-    window.onerror = function(msg, url, line, col, error) {
-        const box = document.getElementById('error-box');
-        box.style.display = 'block';
-        box.innerText = `CRITICAL ERROR: ${msg}`;
-        console.error(error);
-        return false;
-    };
+    const updateDebug = (status, details) => { const bar = document.getElementById('debug-bar'); if(bar) bar.innerHTML = `<span>${status}</span><span>${details}</span>`; }
+    window.onerror = function(msg, url, line, col, error) { const box = document.getElementById('error-box'); box.style.display = 'block'; box.innerText = `CRITICAL ERROR: ${msg}`; console.error(error); return false; };
 
-    /* --- CONSTANTS & CONFIG --- */
     const FB_CONFIG = { apiKey: "AIzaSyBWFzHTy4lgLNL1xbLuOK3B3hsZPCzxIhI", authDomain: "tnh-yvr-client-track.firebaseapp.com", projectId: "tnh-yvr-client-track", storageBucket: "tnh-yvr-client-track.firebasestorage.app", messagingSenderId: "566937672669", appId: "1:566937672669:web:6add7a9f2359510c303434", measurementId: "G-0QPSTX0SD8" };
     const LOGOS = { YVR: 'https://i.imgur.com/MNRYfAD.jpeg', TNH: 'https://i.imgur.com/tRlh6tm.jpeg', ALL: 'https://i.imgur.com/JtO5T2E.jpeg' };
     const ARTIFACT_ID = 'tnh-yvr-client-track'; 
     const FEE_CONST = { BASE: 750, DOC: 700, FEE: 300, DOC_GOAL: 4 };
-    
-    const DEFAULT_USERS = [
-        { id: 'U_1', name: 'Juan Orozco', pin: '1234', role: 'admin' },
-        { id: 'U_2', name: 'Adam Orozco', pin: '1234', role: 'admin' },
-        { id: 'U_3', name: 'Shane Spencer', pin: '1234', role: 'staff' },
-        { id: 'U_4', name: 'Corey Kite', pin: '1234', role: 'admin' },
-        { id: 'U_5', name: 'Ryan Sprauer', pin: '1234', role: 'staff' },
-        { id: 'U_6', name: 'Richard Gutierrez', pin: '1234', role: 'staff' }
-    ];
-
+    const DEFAULT_USERS = [{ id: 'U_1', name: 'Juan Orozco', pin: '1234', role: 'admin' }, { id: 'U_2', name: 'Adam Orozco', pin: '1234', role: 'admin' }, { id: 'U_3', name: 'Shane Spencer', pin: '1234', role: 'staff' }, { id: 'U_4', name: 'Corey Kite', pin: '1234', role: 'admin' }, { id: 'U_5', name: 'Ryan Sprauer', pin: '1234', role: 'staff' }, { id: 'U_6', name: 'Richard Gutierrez', pin: '1234', role: 'staff' }];
     const ETHNICITY_OPTS = ['Unknown', 'Hispanic or Latino', 'American Indian or Alaska Native', 'Asian', 'Black or African American', 'Native Hawaiian or Other Pacific Islander', 'White', 'Two or More Races', 'Other'];
     const AGE_RANGES = ['18-25', '26-35', '36-45', '46-55', '56+', 'Unknown'];
     const TREATMENT_CENTERS = ["Select TX Center...", "Sundown M Ranch", "James Oldham Treatment Center (JOTC)", "ABHS", "Barth Clinic", "Valley Health and Counseling", "Triumph Treatment", "Merit Resources", "Tribal Program", "Other"];
-    
-    const FEE_ASSIST_OPTS = [
-        {id: 'none', label: 'Unknown / N/A', color: '#64748b', bg: '#f8fafc'},
-        {id: 'needs', label: 'Needs Assistance', color: '#dc2626', bg: '#fef2f2'},
-        {id: 'applied', label: 'Applied (Waiting)', color: '#d97706', bg: '#fffbeb'},
-        {id: 'contacted', label: 'Spoke to CM', color: '#7c3aed', bg: '#f5f3ff'},
-        {id: 'receiving', label: 'Receiving Assistance', color: '#16a34a', bg: '#dcfce7'},
-        {id: 'not_needed', label: 'Not Needed', color: '#475569', bg: '#f1f5f9'}
-    ];
-    
-    const PAYER_STYLES = {
-        'self': { bg: '#f0fdf4', txt: '#166534', b: '#bbf7d0' }, 'dshs': { bg: '#ecfccb', txt: '#3f6212', b: '#d9f99d' }, 'doc': { bg: '#eff6ff', txt: '#1e40af', b: '#bfdbfe' },
-        'tribal': { bg: '#fff7ed', txt: '#9a3412', b: '#fed7aa' }, 'ncac': { bg: '#faf5ff', txt: '#6b21a8', b: '#e9d5ff' }, 'ynhc': { bg: '#d1fae5', txt: '#064e3b', b: '#10b981' },
-        'entrust': { bg: '#fffbeb', txt: '#92400e', b: '#fde68a' }, 'consistent': { bg: '#f0fdfa', txt: '#0f766e', b: '#99f6e4' }, 'wa_monitor': { bg: '#f1f5f9', txt: '#334155', b: '#cbd5e1' },
-        'family': { bg: '#fdf2f8', txt: '#be185d', b: '#fbcfe8' }, 'vhc': { bg: '#ecfeff', txt: '#0e7490', b: '#a5f3fc' }, 'barth': { bg: '#fef2f2', txt: '#b91c1c', b: '#fecaca' },
-        'merit': { bg: '#fff7ed', txt: '#c2410c', b: '#fdba74' }, 'ttc': { bg: '#eff6ff', txt: '#1d4ed8', b: '#93c5fd' }, 'default': { bg: '#f3f4f6', txt: '#374151', b: '#d1d5db' }
-    };
-    
-    const DSHS_OPTS = [
-        {id:'enrolled',l:'Enrolled (Receiving ABD/HEN)',c:'#166534',b:'#dcfce7'}, {id:'needs_apply',l:'Needs to Apply (Go to DSHS)',c:'#991b1b',b:'#fee2e2'},
-        {id:'submitted',l:'Application Submitted (Waiting)',c:'#b45309',b:'#fef3c7'}, {id:'pending_interview',l:'Pending Interview',c:'#b45309',b:'#fef3c7'},
-        {id:'pending_med',l:'Pending Medical Review',c:'#b45309',b:'#fef3c7'}, {id:'self_pay',l:'Not Needed (Self-Pay/Job)',c:'#475569',b:'#f1f5f9'},
-        {id:'refused',l:'Not Needed (Refused/Opt-out)',c:'#475569',b:'#f1f5f9'}, {id:'ineligible',l:'Ineligible',c:'#475569',b:'#f1f5f9'}, {id:'na',l:'N/A (Unknown)',c:'#64748b',b:'#f8fafc'}
-    ];
-    
-    const IOP_OPTS = [
-        {id:'needs_intake',l:'Needs Intake/Assessment',c:'#991b1b',b:'#fee2e2'}, {id:'active_iop',l:'Active IOP',c:'#b45309',b:'#fef3c7'},
-        {id:'active_op',l:'Active OP',c:'#b45309',b:'#fef3c7'}, {id:'aftercare',l:'Enrolled in Aftercare',c:'#166534',b:'#dcfce7'},
-        {id:'graduated',l:'Graduated Treatment',c:'#15803d',b:'#dcfce7'}, {id:'not_required',l:'Not Required / Completed Prior',c:'#475569',b:'#f1f5f9'}, {id:'na',l:'N/A (Unknown)',c:'#64748b',b:'#f8fafc'}
-    ];
-    
-    const PAYERS = [
-        {id:'self',name:'Self Pay'}, {id:'dshs',name:'DSHS'}, {id:'doc',name:'DOC'}, {id:'tribal',name:'Tribal'}, {id:'other',name:'Other'}, {id:'ncac',name:'NCAC'},
-        {id:'ynhc',name:'YNHC'}, {id:'entrust',name:'Entrust'}, {id:'consistent',name:'Consistent'}, {id:'wa_monitor',name:'WA Monitor'}, {id:'family',name:'Family'},
-        {id:'vhc',name:'VHC'}, {id:'barth',name:'Barth'}, {id:'merit',name:'Merit'}, {id:'ttc',name:'TTC'}
+    const FEE_ASSIST_OPTS = [{id: 'none', label: 'Unknown / N/A', color: '#64748b', bg: '#f8fafc'}, {id: 'needs', label: 'Needs Assistance', color: '#dc2626', bg: '#fef2f2'}, {id: 'applied', label: 'Applied (Waiting)', color: '#d97706', bg: '#fffbeb'}, {id: 'contacted', label: 'Spoke to CM', color: '#7c3aed', bg: '#f5f3ff'}, {id: 'receiving', label: 'Receiving Assistance', color: '#16a34a', bg: '#dcfce7'}, {id: 'not_needed', label: 'Not Needed', color: '#475569', bg: '#f1f5f9'}];
+    const PAYER_STYLES = { 'self': { bg: '#f0fdf4', txt: '#166534', b: '#bbf7d0' }, 'dshs': { bg: '#ecfccb', txt: '#3f6212', b: '#d9f99d' }, 'doc': { bg: '#eff6ff', txt: '#1e40af', b: '#bfdbfe' }, 'tribal': { bg: '#fff7ed', txt: '#9a3412', b: '#fed7aa' }, 'ncac': { bg: '#faf5ff', txt: '#6b21a8', b: '#e9d5ff' }, 'ynhc': { bg: '#d1fae5', txt: '#064e3b', b: '#10b981' }, 'entrust': { bg: '#fffbeb', txt: '#92400e', b: '#fde68a' }, 'consistent': { bg: '#f0fdfa', txt: '#0f766e', b: '#99f6e4' }, 'wa_monitor': { bg: '#f1f5f9', txt: '#334155', b: '#cbd5e1' }, 'family': { bg: '#fdf2f8', txt: '#be185d', b: '#fbcfe8' }, 'vhc': { bg: '#ecfeff', txt: '#0e7490', b: '#a5f3fc' }, 'barth': { bg: '#fef2f2', txt: '#b91c1c', b: '#fecaca' }, 'merit': { bg: '#fff7ed', txt: '#c2410c', b: '#fdba74' }, 'ttc': { bg: '#eff6ff', txt: '#1d4ed8', b: '#93c5fd' }, 'default': { bg: '#f3f4f6', txt: '#374151', b: '#d1d5db' } };
+    const DSHS_OPTS = [{id:'enrolled',l:'Enrolled (Receiving ABD/HEN)',c:'#166534',b:'#dcfce7'}, {id:'needs_apply',l:'Needs to Apply (Go to DSHS)',c:'#991b1b',b:'#fee2e2'}, {id:'submitted',l:'Application Submitted (Waiting)',c:'#b45309',b:'#fef3c7'}, {id:'pending_interview',l:'Pending Interview',c:'#b45309',b:'#fef3c7'}, {id:'pending_med',l:'Pending Medical Review',c:'#b45309',b:'#fef3c7'}, {id:'self_pay',l:'Not Needed (Self-Pay/Job)',c:'#475569',b:'#f1f5f9'}, {id:'refused',l:'Not Needed (Refused/Opt-out)',c:'#475569',b:'#f1f5f9'}, {id:'ineligible',l:'Ineligible',c:'#475569',b:'#f1f5f9'}, {id:'na',l:'N/A (Unknown)',c:'#64748b',b:'#f8fafc'}];
+    const IOP_OPTS = [{id:'needs_intake',l:'Needs Intake/Assessment',c:'#991b1b',b:'#fee2e2'}, {id:'active_iop',l:'Active IOP',c:'#b45309',b:'#fef3c7'}, {id:'active_op',l:'Active OP',c:'#b45309',b:'#fef3c7'}, {id:'aftercare',l:'Enrolled in Aftercare',c:'#166534',b:'#dcfce7'}, {id:'graduated',l:'Graduated Treatment',c:'#15803d',b:'#dcfce7'}, {id:'not_required',l:'Not Required / Completed Prior',c:'#475569',b:'#f1f5f9'}, {id:'na',l:'N/A (Unknown)',c:'#64748b',b:'#f8fafc'}];
+    const PAYERS = [{id:'self',name:'Self Pay'}, {id:'dshs',name:'DSHS'}, {id:'doc',name:'DOC'}, {id:'tribal',name:'Tribal'}, {id:'other',name:'Other'}, {id:'ncac',name:'NCAC'}, {id:'ynhc',name:'YNHC'}, {id:'entrust',name:'Entrust'}, {id:'consistent',name:'Consistent'}, {id:'wa_monitor',name:'WA Monitor'}, {id:'family',name:'Family'}, {id:'vhc',name:'VHC'}, {id:'barth',name:'Barth'}, {id:'merit',name:'Merit'}, {id:'ttc',name:'TTC'}];
+    const DEFAULT_HOUSES = [
+        {id:'H_YVR1', name:'YVR Main', org:'YVR', rooms:[{id:'R_1', name:'Room 1', beds:2}, {id:'R_2', name:'Room 2', beds:2}]},
+        {id:'H_TNH1', name:'TNH House', org:'TNH', rooms:[{id:'R_3', name:'Top Level', beds:4}, {id:'R_4', name:'Bottom Level', beds:4}]}
     ];
 
-    /* --- UTILS --- */
-    const uid = (p='id') => `${p}_${Math.random().toString(36).slice(2,9)}`;
-    const fmtCur = (n) => (n||0).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
-    const fmtMon = (m) => { const [y,mm]=(m||'').split('-'); return m ? new Date(y,mm-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''; };
-    const fmtDateDisplay = (d) => { if(!d) return ''; if(typeof d === 'string' && d.match(/^\d{4}-\d{2}-\d{2}$/)) { const [y,m,day] = d.split('-').map(Number); return new Date(y, m-1, day).toLocaleDateString(); } return new Date(d).toLocaleDateString(); };
-    const fmtTime12 = (t) => { if(!t) return ''; const [h, m] = t.split(':'); const date = new Date(); date.setHours(h); date.setMinutes(m); return date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'}); };
-    const getTodayISO = () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().slice(0,10); };
-    const cleanPhone = (p) => (''+p).replace(/\D/g,'');
-    const fmtPhone = (p) => { const c=(''+p).replace(/\D/g,''); if(c.length===10) return `(${c.slice(0,3)}) ${c.slice(3,6)}-${c.slice(6)}`; return p||''; };
-    const monthOf = (d) => d ? d.slice(0,7) : '';
-    
-    const resolvePayerId = (val) => {
-        if(!val) return 'self';
-        const lower = val.toLowerCase();
-        if(PAYERS.find(p => p.id === val)) return val;
-        if(lower.includes('northwest') || lower.includes('ncac')) return 'ncac';
-        if(lower.includes('yakima') || lower.includes('ynhc')) return 'ynhc';
-        if(lower.includes('valley') || lower.includes('vhc')) return 'vhc';
-        if(lower.includes('triumph') || lower.includes('ttc')) return 'ttc';
-        if(lower.includes('barth')) return 'barth';
-        if(lower.includes('merit')) return 'merit';
-        if(lower.includes('consistent')) return 'consistent';
-        if(lower.includes('monitoring') || lower.includes('wa monitor')) return 'wa_monitor';
-        if(lower.includes('entrust')) return 'entrust';
-        if(lower.includes('tribal')) return 'tribal';
-        if(lower.includes('family')) return 'family';
-        if(lower.includes('doc')) return 'doc';
-        if(lower.includes('dshs')) return 'dshs';
-        return 'other';
-    };
-    
-    const getFeeDueBase = (r, m) => {
-        const pid = resolvePayerId(r.payerOrgId);
-        if(!r) return 0;
-        if(r.name?.toLowerCase().includes('joey brooks')) {
-            const dt = new Date(m + '-01');
-            if(dt >= new Date('2025-10-01') && dt <= new Date('2026-03-31')) return 500;
-        }
-        return pid === 'doc' ? FEE_CONST.DOC : FEE_CONST.BASE;
-    };
-    
-    const getMoveInFeeDue = (r) => {
-        const pid = resolvePayerId(r.payerOrgId);
-        return (pid==='doc' || r.feeWaived) ? 0 : Math.max(0, FEE_CONST.FEE - (r.feePaidAmount||0));
-    };
-    
-    const getFeeAssistStatus = (r) => {
-        if (r.feeAssistStatus) return FEE_ASSIST_OPTS.find(o => o.id === r.feeAssistStatus) || FEE_ASSIST_OPTS[0];
-        if (r.needsRentalAssistance === true) return FEE_ASSIST_OPTS.find(o => o.id === 'needs');
-        return FEE_ASSIST_OPTS.find(o => o.id === 'none');
+    window.UTILS = {
+        uid: (p='id') => `${p}_${Math.random().toString(36).slice(2,9)}`,
+        fmtCur: (n) => (n||0).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}),
+        fmtMon: (m) => { const [y,mm]=(m||'').split('-'); return m ? new Date(y,mm-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'}) : ''; },
+        fmtDateDisplay: (d) => { if(!d) return ''; if(typeof d === 'string' && d.match(/^\d{4}-\d{2}-\d{2}$/)) { const [y,m,day] = d.split('-').map(Number); return new Date(y, m-1, day).toLocaleDateString(); } return new Date(d).toLocaleDateString(); },
+        fmtTime12: (t) => { if(!t) return ''; const [h, m] = t.split(':'); const date = new Date(); date.setHours(h); date.setMinutes(m); return date.toLocaleTimeString([], {hour: 'numeric', minute:'2-digit'}); },
+        getTodayISO: () => { const d = new Date(); const offset = d.getTimezoneOffset() * 60000; return new Date(d.getTime() - offset).toISOString().slice(0,10); },
+        cleanPhone: (p) => (''+p).replace(/\D/g,''),
+        fmtPhone: (p) => { const c=(''+p).replace(/\D/g,''); if(c.length===10) return `(${c.slice(0,3)}) ${c.slice(3,6)}-${c.slice(6)}`; return p||''; },
+        monthOf: (d) => d ? d.slice(0,7) : '',
+        resolvePayerId: (val) => { if(!val) return 'self'; const lower = val.toLowerCase(); if(PAYERS.find(p => p.id === val)) return val; if(lower.includes('northwest') || lower.includes('ncac')) return 'ncac'; if(lower.includes('yakima') || lower.includes('ynhc')) return 'ynhc'; if(lower.includes('valley') || lower.includes('vhc')) return 'vhc'; if(lower.includes('triumph') || lower.includes('ttc')) return 'ttc'; if(lower.includes('barth')) return 'barth'; if(lower.includes('merit')) return 'merit'; if(lower.includes('consistent')) return 'consistent'; if(lower.includes('monitoring') || lower.includes('wa monitor')) return 'wa_monitor'; if(lower.includes('entrust')) return 'entrust'; if(lower.includes('tribal')) return 'tribal'; if(lower.includes('family')) return 'family'; if(lower.includes('doc')) return 'doc'; if(lower.includes('dshs')) return 'dshs'; return 'other'; },
+        getFeeDueBase: (r, m) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); if(!r) return 0; if(r.name?.toLowerCase().includes('joey brooks')) { const dt = new Date(m + '-01'); if(dt >= new Date('2025-10-01') && dt <= new Date('2026-03-31')) return 500; } return pid === 'doc' ? FEE_CONST.DOC : FEE_CONST.BASE; },
+        getMoveInFeeDue: (r) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); return (pid==='doc' || r.feeWaived) ? 0 : Math.max(0, FEE_CONST.FEE - (r.feePaidAmount||0)); },
+        getFeeAssistStatus: (r) => { if (r.feeAssistStatus) return FEE_ASSIST_OPTS.find(o => o.id === r.feeAssistStatus) || FEE_ASSIST_OPTS[0]; if (r.needsRentalAssistance === true) return FEE_ASSIST_OPTS.find(o => o.id === 'needs'); return FEE_ASSIST_OPTS.find(o => o.id === 'none'); }
     };
 
-    /* --- COMPONENTS --- */
     const { useState, useMemo, useEffect, useRef, Fragment } = React;
+    const { uid, fmtCur, fmtMon, fmtDateDisplay, fmtTime12, getTodayISO, cleanPhone, fmtPhone, monthOf, resolvePayerId, getFeeDueBase, getMoveInFeeDue, getFeeAssistStatus } = window.UTILS;
 
-    const Modal = ({ title, children, onClose, large }) => (
-      <div className="modal-backdrop" onClick={onClose}>
-        <div className={`modal ${large?'large':''}`} onClick={e=>e.stopPropagation()}>
-          <button className="close-x" onClick={onClose}>&times;</button>
-          <div style={{fontWeight:700,fontSize:18,marginBottom:20, borderBottom:'1px solid var(--ring)', paddingBottom:12}}>{title}</div>
-          {children}
-        </div>
-      </div>
-    );
-
-    const Donut = ({ paid, unpaid }) => {
-        const total = paid + unpaid;
-        if(total <= 0) return null;
-        const pPct = (paid/total) * 100;
-        const dash = (pPct * 251.2) / 100;
-        return (
-            <div style={{position:'relative', width:140, height:140, margin:'0 auto'}}>
-                <svg viewBox="0 0 100 100" style={{transform:'rotate(-90deg)'}}>
-                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="12" />
-                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="#22c55e" strokeWidth="12" strokeDasharray={`${dash} 251.2`} />
-                </svg>
-                <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
-                    <div style={{fontSize:11,color:'#64748b'}}>Collected</div>
-                    <div style={{fontSize:16,fontWeight:700}}>{Math.round(pPct)}%</div>
-                </div>
-            </div>
-        );
-    };
+    const Modal = ({ title, children, onClose, large }) => ( <div className="modal-backdrop" onClick={onClose}> <div className={`modal ${large?'large':''}`} onClick={e=>e.stopPropagation()}> <button className="close-x" onClick={onClose}>&times;</button> <div style={{fontWeight:700,fontSize:18,marginBottom:20, borderBottom:'1px solid var(--ring)', paddingBottom:12}}>{title}</div> {children} </div> </div> );
+    const Donut = ({ paid, unpaid }) => { const total = paid + unpaid; if(total <= 0) return null; const pPct = (paid/total) * 100; const dash = (pPct * 251.2) / 100; return ( <div style={{position:'relative', width:140, height:140, margin:'0 auto'}}> <svg viewBox="0 0 100 100" style={{transform:'rotate(-90deg)'}}> <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="12" /> <circle cx="50" cy="50" r="40" fill="transparent" stroke="#22c55e" strokeWidth="12" strokeDasharray={`${dash} 251.2`} /> </svg> <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}> <div style={{fontSize:11,color:'#64748b'}}>Collected</div> <div style={{fontSize:16,fontWeight:700}}>{Math.round(pPct)}%</div> </div> </div> ); };
 
     const ClientRow = ({ r, h, meta, onEdit, onPay, onView }) => {
         const { selectedMonth, months } = meta;
@@ -270,44 +158,26 @@
                             <div style={{margin:'4px 0'}}>
                                 <span style={{fontSize:'11px', fontWeight:700, color:'var(--muted)', marginRight:4}}>ABD/HEN Status:</span>
                                 <span className="badge" style={{color:dshs.c,background:dshs.b,borderColor:dshs.c+'40'}}>{dshs.l}</span>
-                                {faStatus.id !== 'none' && (
-                                    <span className="badge" style={{backgroundColor:faStatus.bg, color:faStatus.color, border:`1px solid ${faStatus.color}40`, marginLeft: 4}}>
-                                        {faStatus.label}
-                                        {faStatus.id === 'contacted' && r.feeAssistContact && ` (${r.feeAssistContact})`}
-                                    </span>
-                                )}
+                                {faStatus.id !== 'none' && (<span className="badge" style={{backgroundColor:faStatus.bg, color:faStatus.color, border:`1px solid ${faStatus.color}40`, marginLeft: 4}}>{faStatus.label}{faStatus.id === 'contacted' && r.feeAssistContact && ` (${r.feeAssistContact})`}</span>)}
                             </div>
                             <div style={{fontSize:12, color:'var(--muted)', display:'grid', gridTemplateColumns:'auto auto', gap:'2px 12px', marginTop:6}}>
-                                <div><span className="text-bold">Room:</span> {h.name} {r.roomId.split('_')[1]||'?'}-{r.bed}</div>
+                                <div><span className="text-bold">Room:</span> {h ? h.name : 'Unassigned'} {r.roomId && r.roomId.split('_')[1]}-{r.bed}</div>
                                 <div><span className="text-bold">Ph:</span> {fmtPhone(r.phoneNumber)||'--'}</div>
                                 <div><span className="text-bold">Age:</span> {r.age || '--'}</div>
                                 <div><span className="text-bold">Race:</span> {r.ethnicity || '--'}</div>
-                                <div style={{gridColumn:'span 2', color:'var(--txt)', marginTop:4}}>
-                                    <span className="text-bold">Treatment:</span>
-                                    <span className="badge" style={{color:iop.c,background:iop.b,borderColor:iop.c+'40', margin:'0 6px'}}>{iop.l}</span>
-                                    {(r.treatmentCenter && r.treatmentCenter!=='Not Attending Treatment') && (<span>at <strong>{r.treatmentCenter}</strong></span>)}
-                                </div>
+                                <div style={{gridColumn:'span 2', color:'var(--txt)', marginTop:4}}><span className="text-bold">Treatment:</span><span className="badge" style={{color:iop.c,background:iop.b,borderColor:iop.c+'40', margin:'0 6px'}}>{iop.l}</span>{(r.treatmentCenter && r.treatmentCenter!=='Not Attending Treatment') && (<span>at <strong>{r.treatmentCenter}</strong></span>)}</div>
                             </div>
                         </div>
                     </div>
                 </td>
-                <td style={{verticalAlign:'top', paddingTop:14}}>
-                    <span style={{ display:'inline-block', padding:'4px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:700, backgroundColor:pStyle.bg, color:pStyle.txt, border:`1px solid ${pStyle.b}` }}>{payerName}</span>
-                </td>
+                <td style={{verticalAlign:'top', paddingTop:14}}><span style={{ display:'inline-block', padding:'4px 8px', borderRadius:'6px', fontSize:'11px', fontWeight:700, backgroundColor:pStyle.bg, color:pStyle.txt, border:`1px solid ${pStyle.b}` }}>{payerName}</span></td>
                 {months.map(m => {
                     const mp = meta.payments.find(p=>p.residentId===r.id && p.monthId===m);
                     const mBase = getFeeDueBase(r, m);
                     const isPd = (mp?.amount||0) >= (mBase + ((r.moveInMonth <= m && !r.feeWaived) ? getMoveInFeeDue(r) : 0));
                     return (
                         <td key={m} style={{textAlign:'center', verticalAlign:'top', paddingTop:12}}>
-                            <button className="button" style={{
-                                height:28,fontSize:11,padding:'0 6px', width:'100%',
-                                background: isPd ? '#dcfce7' : (mp ? '#fef9c3' : '#fff'),
-                                borderColor: isPd ? '#bbf7d0' : (mp ? '#fde047' : '#e2e8f0'),
-                                color: isPd ? '#166534' : (mp ? '#a16207' : '#ef4444')
-                            }} onClick={()=>onPay(r, m)}>
-                                {mp ? fmtCur(mp.amount) : fmtCur(mBase)}
-                            </button>
+                            <button className="button" style={{height:28,fontSize:11,padding:'0 6px', width:'100%', background: isPd ? '#dcfce7' : (mp ? '#fef9c3' : '#fff'), borderColor: isPd ? '#bbf7d0' : (mp ? '#fde047' : '#e2e8f0'), color: isPd ? '#166534' : (mp ? '#a16207' : '#ef4444')}} onClick={()=>onPay(r, m)}>{mp ? fmtCur(mp.amount) : fmtCur(mBase)}</button>
                             <div style={{fontSize:10, color:'#94a3b8', marginTop:2}}>{fmtMon(m)}</div>
                         </td>
                     );
@@ -334,14 +204,8 @@
                 <div className="login-box">
                     <img className="login-logo" src={LOGOS.ALL} alt="Logo" />
                     <h2 style={{margin:'0 0 24px'}}>Program Fee Tracker</h2>
-                    <div style={{textAlign:'left', marginBottom:16}}>
-                        <label>Select User</label>
-                        <select className="select" style={{width:'100%', height:44, fontSize:16}} value={userId} onChange={e=>setUserId(e.target.value)}>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
-                    </div>
-                    <div style={{textAlign:'left', marginBottom:24}}>
-                        <label>Enter PIN</label>
-                        <input type="password" className="input" style={{width:'100%', height:44, fontSize:24, textAlign:'center', letterSpacing:4}} value={pin} onChange={e=>setPin(e.target.value)} placeholder="••••" maxLength={6} />
-                    </div>
+                    <div style={{textAlign:'left', marginBottom:16}}><label>Select User</label><select className="select" style={{width:'100%', height:44, fontSize:16}} value={userId} onChange={e=>setUserId(e.target.value)}>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
+                    <div style={{textAlign:'left', marginBottom:24}}><label>Enter PIN</label><input type="password" className="input" style={{width:'100%', height:44, fontSize:24, textAlign:'center', letterSpacing:4}} value={pin} onChange={e=>setPin(e.target.value)} placeholder="••••" maxLength={6} /></div>
                     {error && <div style={{color:'red', marginBottom:16, fontWeight:600}}>{error}</div>}
                     <button className="button primary" style={{width:'100%', height:48, fontSize:16}} onClick={handleLogin}>Log In</button>
                 </div>
@@ -351,12 +215,7 @@
 
     const ChangePinModal = ({ user, onClose, onSave }) => {
         const [newPin, setNewPin] = useState('');
-        return (
-            <Modal title="Change Your PIN" onClose={onClose}>
-                <div className="input-group"><label>New PIN</label><input type="password" class="input" value={newPin} onChange={e=>setNewPin(e.target.value)} /></div>
-                <button className="button primary" style={{width:'100%'}} onClick={()=>onSave(newPin)}>Update PIN</button>
-            </Modal>
-        )
+        return ( <Modal title="Change Your PIN" onClose={onClose}> <div className="input-group"><label>New PIN</label><input type="password" class="input" value={newPin} onChange={e=>setNewPin(e.target.value)} /></div> <button className="button primary" style={{width:'100%'}} onClick={()=>onSave(newPin)}>Update PIN</button> </Modal> );
     };
 
     const ManageTeamModal = ({ users, onClose, onSave }) => {
@@ -364,24 +223,7 @@
          const update = (idx, field, val) => { const n = [...team]; n[idx][field] = val; setTeam(n); };
          const add = () => setTeam([...team, {id: uid('U'), name: 'New User', pin: '0000', role: 'staff'}]);
          const del = (idx) => { if(confirm('Remove this user?')) setTeam(team.filter((_,i)=>i!==idx)); };
-         return (
-             <Modal title="Manage Team Access" onClose={onClose}>
-                 <div style={{maxHeight:400, overflowY:'auto'}}>
-                     {team.map((u, i) => (
-                         <div key={u.id} style={{display:'flex', gap:8, marginBottom:12, alignItems:'flex-end'}}>
-                             <div style={{flex:2}}><label>Name</label><input className="input" value={u.name} onChange={e=>update(i,'name',e.target.value)} /></div>
-                             <div style={{width:80}}><label>PIN</label><input className="input" value={u.pin} onChange={e=>update(i,'pin',e.target.value)} /></div>
-                             <div style={{width:100}}><label>Role</label><select className="select" value={u.role} onChange={e=>update(i,'role',e.target.value)}><option value="staff">Staff</option><option value="admin">Admin</option></select></div>
-                             <button className="button" style={{color:'red', borderColor:'transparent'}} onClick={()=>del(i)}>X</button>
-                         </div>
-                     ))}
-                 </div>
-                 <div style={{display:'flex', justifyContent:'space-between', marginTop:16}}>
-                     <button className="button" onClick={add}>+ Add User</button>
-                     <button className="button primary" onClick={()=>onSave(team)}>Save Team</button>
-                 </div>
-             </Modal>
-         );
+         return ( <Modal title="Manage Team Access" onClose={onClose}> <div style={{maxHeight:400, overflowY:'auto'}}> {team.map((u, i) => ( <div key={u.id} style={{display:'flex', gap:8, marginBottom:12, alignItems:'flex-end'}}> <div style={{flex:2}}><label>Name</label><input className="input" value={u.name} onChange={e=>update(i,'name',e.target.value)} /></div> <div style={{width:80}}><label>PIN</label><input className="input" value={u.pin} onChange={e=>update(i,'pin',e.target.value)} /></div> <div style={{width:100}}><label>Role</label><select className="select" value={u.role} onChange={e=>update(i,'role',e.target.value)}><option value="staff">Staff</option><option value="admin">Admin</option></select></div> <button className="button" style={{color:'red', borderColor:'transparent'}} onClick={()=>del(i)}>X</button> </div> ))} </div> <div style={{display:'flex', justifyContent:'space-between', marginTop:16}}> <button className="button" onClick={add}>+ Add User</button> <button className="button primary" onClick={()=>onSave(team)}>Save Team</button> </div> </Modal> );
     };
 
     const PayModal = ({ resident, month, payments, payers, onClose, onSave }) => {
@@ -393,31 +235,7 @@
         const [method, setMethod] = useState(exist?.method || 'money order');
         const [payer, setPayer] = useState(exist?.payerOrgId || resident.payerOrgId);
         const [payDate, setPayDate] = useState(exist?.dateISO ? exist.dateISO.substring(0,10) : new Date().toISOString().substring(0,10));
-
-        return (
-            <Modal title={`Payment: ${resident.name} (${fmtMon(month)})`} onClose={onClose}>
-                <div style={{background:'#f8fafc', padding:10, borderRadius:8, marginBottom:16}}>
-                    <div className="text-sm">Expected Program Fees: <b>{fmtCur(rentDue)}</b></div>
-                    {feeDue > 0 && <div style={{color:'var(--red)', fontWeight:600}}>+ Fee Due: {fmtCur(feeDue)}</div>}
-                    <div style={{marginTop:4, borderTop:'1px solid #ddd', paddingTop:4}}>Total Expected: <b>{fmtCur(rentDue + feeDue)}</b></div>
-                </div>
-                <div className="input-group"><label>Total Payment Amount</label><input type="number" className="input" value={amt} onChange={e=>setAmt(parseFloat(e.target.value)||0)} /></div>
-                {feeDue > 0 && (
-                     <div className="input-group" style={{background:'#fee2e2', padding:10, borderRadius:8}}>
-                        <label style={{color:'#991b1b'}}>Allocate portion to Move-in Fee?</label><input type="number" className="input" max={feeDue} value={feeAlloc} onChange={e=>{const val = parseFloat(e.target.value)||0; setFeeAlloc(val); if(!exist) setAmt(rentDue + val);}} />
-                    </div>
-                )}
-                <div className="row">
-                    <div className="input-group"><label>Method</label><select className="select" value={method} onChange={e=>setMethod(e.target.value)}><option value="money order">Money Order</option><option value="check">Check</option><option value="cash">Cash</option><option value="ach">ACH/Wire</option></select></div>
-                    <div className="input-group"><label>Payer</label><select className="select" value={payer} onChange={e=>setPayer(e.target.value)}>{payers.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-                </div>
-                <div className="input-group"><label>Payment Date</label><input type="date" className="input" value={payDate} onChange={e=>setPayDate(e.target.value)} /></div>
-                <div style={{marginTop:16,display:'flex',gap:8,justifyContent:'space-between'}}>
-                     <button className="button" style={{color:'var(--red)', borderColor:'var(--red)'}} onClick={()=>onSave({residentId:resident.id, monthId:month, amount:null})}>Mark Unpaid / Delete</button>
-                     <button className="button primary" onClick={()=>onSave({ residentId:resident.id, monthId:month, amount:amt, method, payerOrgId:payer, dateISO: new Date(payDate).toISOString(), feeAllocated: feeAlloc })}>Save Payment</button>
-                </div>
-            </Modal>
-        );
+        return ( <Modal title={`Payment: ${resident.name} (${fmtMon(month)})`} onClose={onClose}> <div style={{background:'#f8fafc', padding:10, borderRadius:8, marginBottom:16}}> <div className="text-sm">Expected Program Fees: <b>{fmtCur(rentDue)}</b></div> {feeDue > 0 && <div style={{color:'var(--red)', fontWeight:600}}>+ Fee Due: {fmtCur(feeDue)}</div>} <div style={{marginTop:4, borderTop:'1px solid #ddd', paddingTop:4}}>Total Expected: <b>{fmtCur(rentDue + feeDue)}</b></div> </div> <div className="input-group"><label>Total Payment Amount</label><input type="number" className="input" value={amt} onChange={e=>setAmt(parseFloat(e.target.value)||0)} /></div> {feeDue > 0 && ( <div className="input-group" style={{background:'#fee2e2', padding:10, borderRadius:8}}> <label style={{color:'#991b1b'}}>Allocate portion to Move-in Fee?</label><input type="number" className="input" max={feeDue} value={feeAlloc} onChange={e=>{const val = parseFloat(e.target.value)||0; setFeeAlloc(val); if(!exist) setAmt(rentDue + val);}} /> </div> )} <div className="row"> <div className="input-group"><label>Method</label><select className="select" value={method} onChange={e=>setMethod(e.target.value)}><option value="money order">Money Order</option><option value="check">Check</option><option value="cash">Cash</option><option value="ach">ACH/Wire</option></select></div> <div className="input-group"><label>Payer</label><select className="select" value={payer} onChange={e=>setPayer(e.target.value)}>{payers.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div> </div> <div className="input-group"><label>Payment Date</label><input type="date" className="input" value={payDate} onChange={e=>setPayDate(e.target.value)} /></div> <div style={{marginTop:16,display:'flex',gap:8,justifyContent:'space-between'}}> <button className="button" style={{color:'var(--red)', borderColor:'var(--red)'}} onClick={()=>onSave({residentId:resident.id, monthId:month, amount:null})}>Mark Unpaid / Delete</button> <button className="button primary" onClick={()=>onSave({ residentId:resident.id, monthId:month, amount:amt, method, payerOrgId:payer, dateISO: new Date(payDate).toISOString(), feeAllocated: feeAlloc })}>Save Payment</button> </div> </Modal> );
     }
 
     const ResidentModal = ({ initial, houses, payers, uniqueOrgs, onClose, onSave, onArchive }) => {
@@ -438,19 +256,7 @@
         };
 
         if(isArchiving) {
-             return (
-                 <Modal title={`Archive: ${f.name}`} onClose={onClose}>
-                     <div style={{background:'#fef2f2', padding:16, borderRadius:8, border:'1px solid #fecaca', marginBottom:16}}>
-                         <div style={{color:'#991b1b', fontWeight:700, marginBottom:8}}>Confirm Discharge / Archive</div>
-                         <div className="input-group"><label>Discharge Date</label><input type="date" className="input" value={archiveData.date} onChange={e=>setArchiveData({...archiveData, date:e.target.value})} /></div>
-                         <div className="input-group"><label>Reason / Case Note</label><textarea className="input" style={{height:80, padding:8}} value={archiveData.reason} onChange={e=>setArchiveData({...archiveData, reason:e.target.value})} placeholder="Reason for leaving..." /></div>
-                     </div>
-                     <div style={{display:'flex', justifyContent:'flex-end', gap:8}}>
-                         <button className="button" onClick={()=>setIsArchiving(false)}>Cancel</button>
-                         <button className="button primary" style={{background:'#dc2626'}} onClick={()=>onArchive(f.id, archiveData.reason, archiveData.date)}>Confirm Archive</button>
-                     </div>
-                 </Modal>
-             )
+             return ( <Modal title={`Archive: ${f.name}`} onClose={onClose}> <div style={{background:'#fef2f2', padding:16, borderRadius:8, border:'1px solid #fecaca', marginBottom:16}}> <div style={{color:'#991b1b', fontWeight:700, marginBottom:8}}>Confirm Discharge / Archive</div> <div className="input-group"><label>Discharge Date</label><input type="date" className="input" value={archiveData.date} onChange={e=>setArchiveData({...archiveData, date:e.target.value})} /></div> <div className="input-group"><label>Reason / Case Note</label><textarea className="input" style={{height:80, padding:8}} value={archiveData.reason} onChange={e=>setArchiveData({...archiveData, reason:e.target.value})} placeholder="Reason for leaving..." /></div> </div> <div style={{display:'flex', justifyContent:'flex-end', gap:8}}> <button className="button" onClick={()=>setIsArchiving(false)}>Cancel</button> <button className="button primary" style={{background:'#dc2626'}} onClick={()=>onArchive(f.id, archiveData.reason, archiveData.date)}>Confirm Archive</button> </div> </Modal> )
         }
         const isArchived = initial && initial.active === false;
         return (
@@ -491,7 +297,6 @@
                         <button className="button" style={{width:'100%', background:'#fff', color:'#1e40af', border:'1px solid #1e40af'}} onClick={handleGoogleCalendar}>Add to Google Calendar 📅</button>
                     </div>
                 )}
-
                 <div style={{marginTop:24,display:'flex',justifyContent:'space-between'}}>
                     {initial && initial.id && !isArchived && <button className="button" style={{color:'red', borderColor:'var(--red)'}} onClick={()=>setIsArchiving(true)}>Archive Now</button>}
                     <div style={{flex:1}}></div>
@@ -580,13 +385,13 @@
         const [org, setOrg] = useState('ALL');
         const [month, setMonth] = useState(getTodayISO().slice(0, 7));
         const [filters, setFilters] = useState({ house: 'ALL', search: '', pay: 'ALL', age: 'ALL', ethnicity: 'ALL', dshs: 'ALL', payer: 'ALL', rentAssist: 'ALL' });
-        const [showFilters, setShowFilters] = useState(false); // --- FIX: ADDED MISSING STATE ---
+        const [showFilters, setShowFilters] = useState(false); 
         const [modal, setModal] = useState({ type: null, data: null }); 
         const [deleteConfirm, setDeleteConfirm] = useState(null);
 
         const uniqueOrgs = useMemo(() => {
             const s = new Set(['YVR', 'TNH']);
-            data.houses.forEach(h => s.add(h.org));
+            (data.houses || []).forEach(h => s.add(h.org));
             return Array.from(s);
         }, [data.houses]);
 
@@ -615,14 +420,8 @@
             const db = window.FB.getFirestore(app);
             
             window.FB.signInAnonymously(auth)
-            .then(() => {
-                updateDebug('Auth', 'Logged in Anonymously');
-            })
-            .catch(e => {
-                console.error("Anon Auth Failed", e);
-                updateDebug('Auth Error', e.message);
-                showToast("Auth Error: " + e.message, "error");
-            });
+            .then(() => { updateDebug('Auth', 'Logged in'); })
+            .catch(e => { console.error("Anon Auth Failed", e); updateDebug('Auth Error', e.message); showToast("Auth Error: " + e.message, "error"); });
 
             const appId = ARTIFACT_ID;
             updateDebug('App ID', appId);
@@ -637,11 +436,16 @@
                 if(s.exists()) {
                     const d = s.data();
                     const count = (d.residents || []).length;
-                    updateDebug('Data', `Found ${count} residents`);
+                    const houseCount = (d.houses || []).length;
+                    updateDebug('Data', `Found ${count} residents, ${houseCount} houses`);
                     
-                    // Default to empty array if residents is missing
+                    // AUTO-RESTORE HOUSES IF MISSING
+                    if (!d.houses || d.houses.length === 0) {
+                        console.warn("Houses missing. Seeding defaults...");
+                        window.FB.setDoc(docRef, { houses: DEFAULT_HOUSES }, {merge:true});
+                        d.houses = DEFAULT_HOUSES;
+                    }
                     if (!d.residents) d.residents = [];
-                    
                     if (!d.users || d.users.length === 0) {
                         window.FB.setDoc(docRef, { users: DEFAULT_USERS }, {merge:true});
                         d.users = DEFAULT_USERS;
@@ -650,7 +454,9 @@
                     setData(d);
                 } else {
                     updateDebug('Data', 'Document Not Found (Empty)');
-                    setData({ houses: [], residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: DEFAULT_USERS });
+                    setData({ houses: DEFAULT_HOUSES, residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: DEFAULT_USERS });
+                    // Initialize doc
+                    window.FB.setDoc(docRef, { houses: DEFAULT_HOUSES, residents: [], payments: [], intakeQueue: [], users: DEFAULT_USERS });
                 }
             }, (err) => { 
                 console.error("Firestore Error:", err); 
@@ -755,7 +561,7 @@
             else { s.setProperty('--brand1',c.getPropertyValue('--all-c')); s.setProperty('--brand2',c.getPropertyValue('--all-b')); }
         }, [org]);
 
-        const visibleHouses = useMemo(() => data.houses.filter(h => org === 'ALL' || h.org === org), [data.houses, org]);
+        const visibleHouses = useMemo(() => (data.houses || []).filter(h => org === 'ALL' || h.org === org), [data.houses, org]);
         const filteredResidents = useMemo(() => {
             let list = (data.residents || []).filter(r => { // Safe access
                 if(!r.active) return false;
@@ -791,6 +597,12 @@
             list.sort((a,b) => (a.houseId+a.roomId).localeCompare(b.houseId+b.roomId));
             return list;
         }, [data.residents, data.payments, org, filters, month]);
+        
+        // Collect Unassigned Residents for Safety Net
+        const unassignedResidents = useMemo(() => {
+            const validHouseIds = (data.houses||[]).map(h=>h.id);
+            return (data.residents||[]).filter(r => r.active && (!r.houseId || !validHouseIds.includes(r.houseId)));
+        }, [data.residents, data.houses]);
 
         const filteredStats = useMemo(() => {
             let count = filteredResidents.length;
@@ -898,7 +710,6 @@
 
                 {view === 'dashboard' && (
                     <div className="grid grid-3">
-                        {/* NEW: UPCOMING INTAKES CARD - MOVED TO TOP */}
                         <div className="card" style={{gridColumn: '1 / -1'}}>
                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, borderBottom:'1px solid var(--ring)', paddingBottom:8}}>
                                 <div style={{fontWeight:700, fontSize:15}}>Upcoming Intakes</div>
@@ -943,7 +754,6 @@
                         </div>
                         <div className="card kpi"><div className="text-sm">Program Fee Goal</div><div className="kpi-value">{fmtCur(stats.revGoal)}</div></div>
                         
-                        {/* Financials Card */}
                         <div className="card" style={{gridColumn:'span 2', display:'flex', alignItems:'center', gap:24}}>
                              <Donut paid={stats.paid} unpaid={Math.max(0, stats.revGoal - stats.paid)} />
                              <div style={{flex:1}}>
@@ -958,7 +768,122 @@
                     </div>
                 )}
                  
-                {/* ... Rest of views ... */}
+                {view === 'clients' && (
+                    <div className="grid">
+                        {visibleHouses.map(h => {
+                            const houseRes = filteredResidents.filter(r => r.houseId === h.id);
+                            if(filters.house !== 'ALL' && h.id !== filters.house) return null;
+                            if(houseRes.length === 0 && filters.search) return null;
+                            const totalBeds = h.rooms.reduce((s,r)=>s+(parseInt(r.beds)||0),0);
+                            const avail = totalBeds - data.residents.filter(r=>r.active && r.houseId === h.id).length;
+
+                            return (
+                                <div className="card" key={h.id} style={{padding:0, overflow:'hidden'}}>
+                                    <div style={{padding:'12px 16px', background:'#f1f5f9', borderBottom:'1px solid var(--ring)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                                        <div style={{fontWeight:700, fontSize:15, color:'var(--brand1)'}}>{h.name} <span className="badge" style={{marginLeft:8,background:avail>0?'var(--green)':'var(--red)',color:'#fff',borderColor:'transparent'}}>{avail} Beds Open</span></div>
+                                        <button className="button" style={{height:24,fontSize:11}} onClick={()=>setModal({type:'EDIT_HOUSE', data:h, residents: data.residents})}>Edit House</button>
+                                    </div>
+                                    <div className="table-wrap" style={{border:'none', borderRadius:0}}>
+                                        <table>
+                                            <thead><tr><th style={{width:'40%'}}>Client / Case Info</th><th style={{width:'15%'}}>Payer</th>{visibleMonths.map(m=><th key={m} style={{textAlign:'center'}}>{fmtMon(m)}</th>)}<th style={{width:'10%'}}>Edit</th></tr></thead>
+                                            <tbody>
+                                                {houseRes.map(r => (<ClientRow key={r.id} r={r} h={h} meta={{selectedMonth:month, payments:data.payments, months:visibleMonths, payers:data.payers}} onPay={(r,m)=>setModal({type:'PAY', data:{r,m}})} onEdit={(r)=>setModal({type:'ADD_RES', data:r})} onView={(r)=>setModal({type:'PROFILE', data:r})} />))}
+                                                {houseRes.length === 0 && <tr><td colSpan={6} style={{textAlign:'center', padding:20, color:'var(--muted)'}}>No clients in this house matching filters.</td></tr>}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div style={{padding:8, borderTop:'1px solid var(--ring)', background:'#fafafa'}}><button className="button ghost" style={{color:'var(--brand1)', width:'100%', borderColor:'transparent'}} onClick={()=>setModal({type:'ADD_RES', data:{houseId:h.id, org:h.org}})}>+ Add Client to {h.name}</button></div>
+                                </div>
+                            )
+                        })}
+                        
+                        {/* SAFETY NET: UNASSIGNED RESIDENTS */}
+                        {unassignedResidents.length > 0 && (
+                            <div className="card" style={{border:'2px solid red'}}>
+                                <div style={{padding:'12px 16px', background:'#fee2e2', color:'red', fontWeight:700}}>⚠ Unassigned / Data Mismatch Residents (Please Edit & Assign House)</div>
+                                <div className="table-wrap">
+                                    <table>
+                                        <thead><tr><th>Client Name</th><th>Actions</th></tr></thead>
+                                        <tbody>
+                                            {unassignedResidents.map(r => (
+                                                <tr key={r.id}>
+                                                    <td>{r.name} <span style={{fontSize:10, color:'grey'}}> (HouseID: {r.houseId})</span></td>
+                                                    <td><button className="button primary" onClick={()=>setModal({type:'ADD_RES', data:r})}>Edit & Fix</button></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+                
+                {view === 'intake' && (
+                    <div className="card" style={{minHeight: '50vh'}}>
+                        <div style={{fontSize:18, fontWeight:700, marginBottom:16}}>Intake Queue</div>
+                        {data.intakeQueue.length === 0 ? <div className="text-sm" style={{fontStyle:'italic', padding:40, textAlign:'center', color:'var(--muted)'}}>No intakes scheduled.</div> : 
+                            <div className="table-wrap">
+                                <table>
+                                    <thead><tr><th>Client</th><th>Schedule</th><th>Origin / Location</th><th>Logistics</th><th style={{textAlign:'right'}}>Actions</th></tr></thead>
+                                    <tbody>
+                                        {[...data.intakeQueue].sort((a,b) => (new Date(a.date || a.graduationDate || '9999-12-31') - new Date(b.date || b.graduationDate || '9999-12-31'))).map(i=>(
+                                            <tr key={i.id}>
+                                                <td><div style={{fontWeight:600}}>{i.name}</div><span className="badge" style={{backgroundColor: i.type==='DOC'?'#eff6ff':'#f3e8ff', color: i.type==='DOC'?'#1e40af':'#7e22ce', border:'none', marginTop:4}}>{i.type || 'TREATMENT'}</span>{i.notes && <div style={{fontSize:11, color:'var(--muted)', fontStyle:'italic', marginTop:4}}>{i.notes}</div>}</td>
+                                                <td><div style={{fontSize:13, fontWeight:600}}>{fmtDateDisplay(i.date || i.graduationDate)}</div><div style={{fontSize:11, color:'var(--muted)'}}>{i.type==='DOC'?'Arrival':'Graduation'} Date</div><div style={{marginTop:4, fontSize:12}}>{i.time ? fmtTime12(i.time) : 'Time TBD'}</div></td>
+                                                <td><div style={{fontWeight:600}}>{i.facility || i.treatmentCenter || 'Unknown'}</div>{i.address && <div style={{fontSize:11, color:'var(--muted)'}}>{i.address}</div>}</td>
+                                                <td>{i.type !== 'DOC' && i.driver && <div style={{fontSize:12}}><strong>Driver:</strong> {i.driver}</div>}<div style={{marginTop:4}}>{i.assignedHouseId ? <span style={{color:'var(--brand1)', fontSize:12, fontWeight:600}}>To: {data.houses.find(h=>h.id===i.assignedHouseId)?.name || i.assignedHouseId}</span> : <span style={{color:'var(--amber)', fontSize:11, fontWeight:600}}>No House Assigned</span>}</div></td>
+                                                <td style={{textAlign:'right'}}>
+                                                    <div style={{display:'flex', gap:6, justifyContent:'flex-end'}}>
+                                                        <button className="button primary" style={{height:24,fontSize:10}} onClick={()=>{ 
+                                                            const prefill = { name:i.name, treatmentCenter: i.facility || i.treatmentCenter, iopGraduationDate: i.date || i.graduationDate, houseId:i.assignedHouseId, notes: i.notes };
+                                                            updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)});
+                                                            setModal({type:'ADD_RES', data: prefill});
+                                                        }}>Check In</button>
+                                                        <button className="button ghost" style={{height:24,fontSize:10, color:'var(--brand1)', borderColor:'var(--ring)'}} onClick={()=>setModal({type:'INTAKE', data:i})}>Edit</button>
+                                                        <button className="button" style={{height:24,fontSize:10,color:'var(--red)', padding:'0 6px'}} onClick={()=>{ updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)}); }}>X</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                )}
+                 
+                {/* MODALS */}
+                {modal.type === 'PAY' && <PayModal resident={modal.data.r} month={modal.data.m} payments={data.payments} payers={data.payers} onClose={()=>setModal({type:null})} onSave={handleSavePayment} />}
+                {modal.type === 'ADD_RES' && <ResidentModal initial={modal.data} houses={data.houses} payers={data.payers} uniqueOrgs={uniqueOrgs} onClose={()=>setModal({type:null})} onSave={handleSaveResident} onArchive={handleArchiveResident} />}
+                {modal.type === 'INTAKE' && <IntakeModal initial={modal.data} houses={data.houses} intakeQueue={data.intakeQueue} onClose={()=>setModal({type:null})} onSave={handleSaveIntake} />}
+                {modal.type === 'EDIT_HOUSE' && <EditHouseModal house={modal.data} residents={data.residents} onClose={()=>setModal({type:null})} onDelete={handleDeleteHouse} onSave={(updatedH)=>{ const newHouses = data.houses.map(h=>h.id===updatedH.id ? updatedH : h); updateStore({houses: newHouses}); setModal({type:null}); }}/>}
+                {modal.type === 'ADD_HOUSE' && <AddHouseModal onClose={()=>setModal({type:null})} onSave={handleCreateHouse} uniqueOrgs={uniqueOrgs} />}
+                {modal.type === 'TEAM' && <ManageTeamModal users={data.users} onClose={()=>setModal({type:null})} onSave={(newTeam)=>{ updateStore({users: newTeam}); setModal({type:null}); showToast('Team Updated'); }} />}
+                {modal.type === 'CHANGE_PIN' && <ChangePinModal user={currentUser} onClose={()=>setModal({type:null})} onSave={handleUpdatePin} />}
+                
+                {modal.type === 'ARCHIVE' && (
+                    <Modal title="Archived Clients" large onClose={()=>setModal({type:null})}>
+                        <table>
+                            <thead><tr><th>Name</th><th>Move Out</th><th>Reason</th><th>Action</th></tr></thead>
+                            <tbody>
+                                {data.residents.filter(r=>!r.active).map(r=>(
+                                    <tr key={r.id}>
+                                        <td style={{fontWeight:600}}>{r.name}</td><td>{r.moveOutDate}</td><td>{r.archiveReason}</td>
+                                        <td>
+                                            <div style={{display:'flex', gap:8}}>
+                                                <button className="button ghost" style={{height:28, fontSize:11, color:'var(--brand1)'}} onClick={()=>setModal({type:'ADD_RES', data:r})}>Edit</button>
+                                                <button className="button primary" style={{height:28, fontSize:11}} onClick={()=>{ setModal({type:'ADD_RES', data: { ...r, active: true, moveOutDate: null, archiveReason: null, moveInDate: new Date().toISOString().slice(0,10) }}); }}>Re-Admit</button>
+                                                <button className="button" style={{height:28, fontSize:11, color:'red', borderColor:'transparent'}} onClick={()=>{ if (deleteConfirm === r.id) { updateStore({ residents: data.residents.filter(x=>x.id!==r.id) }); setDeleteConfirm(null); } else { setDeleteConfirm(r.id); setTimeout(() => setDeleteConfirm(null), 3000); } }}>{deleteConfirm === r.id ? "Confirm?" : "X"}</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {data.residents.filter(r=>!r.active).length === 0 && <tr><td colSpan={4} style={{textAlign:'center', padding:20}}>No archived clients.</td></tr>}
+                            </tbody>
+                        </table>
+                    </Modal>
+                )}
                 
                 {toast && <div className={`auto-toast ${toast.kind}`}>{toast.msg}</div>}
             </div>
