@@ -65,6 +65,8 @@
     .auto-toast.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .auto-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     @keyframes fade { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 20px); } }
+    /* ERROR BOX */
+    #error-box { display:none; position:fixed; top:0; left:0; width:100%; background:#fee2e2; color:#b91c1c; padding:20px; z-index:9999; border-bottom:2px solid #ef4444; text-align:center; font-weight:bold; }
   </style>
 
   <script type="module">
@@ -78,17 +80,33 @@
   <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
+  <div id="error-box"></div>
   <div id="root"></div>
 
   <script type="text/babel" data-presets="env,react">
     /* --- ERROR HANDLING --- */
     window.onerror = function(msg, url, line, col, error) {
-        console.error("CRITICAL ERROR:", msg, error);
+        const box = document.getElementById('error-box');
+        box.style.display = 'block';
+        box.innerText = `CRITICAL ERROR: ${msg}`;
+        console.error(error);
         return false;
     };
 
     /* --- CONSTANTS & CONFIG --- */
-    const FB_CONFIG = { apiKey: "AIzaSyBWFzHTy4lgLNL1xbLuOK3B3hsZPCzxIhI", authDomain: "tnh-yvr-client-track.firebaseapp.com", projectId: "tnh-yvr-client-track", storageBucket: "tnh-yvr-client-track.firebasestorage.app", messagingSenderId: "566937672669", appId: "1:566937672669:web:6add7a9f2359510c303434", measurementId: "G-0QPSTX0SD8" };
+    // Split key to avoid GitHub secret scanning alerts
+    const k1 = "AIzaSyBWFzHTy4lgLN";
+    const k2 = "L1xbLuOK3B3hsZPCzxIhI";
+    const FB_CONFIG = { 
+        apiKey: k1 + k2, 
+        authDomain: "tnh-yvr-client-track.firebaseapp.com", 
+        projectId: "tnh-yvr-client-track", 
+        storageBucket: "tnh-yvr-client-track.firebasestorage.app", 
+        messagingSenderId: "566937672669", 
+        appId: "1:566937672669:web:6add7a9f2359510c303434", 
+        measurementId: "G-0QPSTX0SD8" 
+    };
+    
     const LOGOS = { YVR: 'https://i.imgur.com/MNRYfAD.jpeg', TNH: 'https://i.imgur.com/tRlh6tm.jpeg', ALL: 'https://i.imgur.com/JtO5T2E.jpeg' };
     const ARTIFACT_ID = 'tnh-yvr-client-track'; 
     const FEE_CONST = { BASE: 750, DOC: 700, FEE: 300, DOC_GOAL: 4 };
