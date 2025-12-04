@@ -168,11 +168,65 @@
         resolvePayerId: (val) => { if(!val) return 'self'; const lower = val.toLowerCase(); if(PAYERS.find(p => p.id === val)) return val; if(lower.includes('northwest') || lower.includes('ncac')) return 'ncac'; if(lower.includes('yakima') || lower.includes('ynhc')) return 'ynhc'; if(lower.includes('valley') || lower.includes('vhc')) return 'vhc'; if(lower.includes('triumph') || lower.includes('ttc')) return 'ttc'; if(lower.includes('barth')) return 'barth'; if(lower.includes('merit')) return 'merit'; if(lower.includes('consistent')) return 'consistent'; if(lower.includes('monitoring') || lower.includes('wa monitor')) return 'wa_monitor'; if(lower.includes('entrust')) return 'entrust'; if(lower.includes('tribal')) return 'tribal'; if(lower.includes('family')) return 'family'; if(lower.includes('doc')) return 'doc'; if(lower.includes('dshs')) return 'dshs'; return 'other'; },
         getFeeDueBase: (r, m) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); if(!r) return 0; if(r.name?.toLowerCase().includes('joey brooks')) { const dt = new Date(m + '-01'); if(dt >= new Date('2025-10-01') && dt <= new Date('2026-03-31')) return 500; } return pid === 'doc' ? FEE_CONST.DOC : FEE_CONST.BASE; },
         getMoveInFeeDue: (r) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); return (pid==='doc' || r.feeWaived) ? 0 : Math.max(0, FEE_CONST.FEE - (r.feePaidAmount||0)); },
-        getFeeAssistStatus: (r) => { if (r.feeAssistStatus) return FEE_ASSIST_OPTS.find(o => o.id === r.feeAssistStatus) || FEE_ASSIST_OPTS[0]; if (r.needsRentalAssistance === true) return FEE_ASSIST_OPTS.find(o => o.id === 'needs'); return FEE_ASSIST_OPTS.find(o => o.id === 'none'); }
+        getFeeAssistStatus: (r) => { if (r.feeAssistStatus) return FEE_ASSIST_OPTS.find(o => o.id === r.feeAssistStatus) || FEE_ASSIST_OPTS[0]; if (r.needsRentalAssistance === true) return FEE_ASSIST_OPTS.find(o => o.id === 'needs'); return FEE_ASSIST_OPTS.find(o => o.id === 'none'); },
+        
+        // --- CALENDAR HELPERS ---
+        addToGoogleCalendar: (i) => {
+            if(!i.date) return alert('Date is required');
+            const startTime = i.time || '12:00';
+            const d = new Date(i.date + 'T' + startTime);
+            const endD = new Date(d.getTime() + 60*60*1000); // 1 hour duration
+
+            const fmt = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+            
+            const url = new URL('https://calendar.google.com/calendar/render');
+            url.searchParams.append('action', 'TEMPLATE');
+            url.searchParams.append('text', `Pickup: ${i.name}`);
+            url.searchParams.append('dates', `${fmt(d)}/${fmt(endD)}`);
+            url.searchParams.append('details', `Pickup from ${i.facility || 'Unknown location'}.\nNotes: ${i.notes || ''}\nDriver: ${i.driver || 'TBD'}`);
+            url.searchParams.append('location', i.address || i.facility || '');
+            
+            window.open(url.toString(), '_blank');
+        },
+
+        downloadICS: (i) => {
+            if(!i.date) return alert('Date is required');
+            const startTime = i.time || '12:00';
+            const d = new Date(i.date + 'T' + startTime);
+            const endD = new Date(d.getTime() + 60*60*1000); 
+
+            const fmt = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "").split('Z')[0] + 'Z'; 
+
+            const icsContent = [
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'BEGIN:VEVENT',
+                `SUMMARY:Pickup: ${i.name}`,
+                `DTSTART:${fmt(d)}`,
+                `DTEND:${fmt(endD)}`,
+                `DESCRIPTION:Pickup from ${i.facility || 'Unknown'}. Notes: ${i.notes || ''}`,
+                `LOCATION:${i.address || i.facility || ''}`,
+                'BEGIN:VALARM',
+                'TRIGGER:-PT60M',
+                'ACTION:DISPLAY',
+                'DESCRIPTION:Pickup Reminder',
+                'END:VALARM',
+                'END:VEVENT',
+                'END:VCALENDAR'
+            ].join('\r\n');
+
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', `pickup_${i.name.replace(/\s+/g, '_')}.ics`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
     const { useState, useMemo, useEffect, useRef, Fragment } = React;
-    const { uid, fmtCur, fmtMon, fmtDateDisplay, fmtTime12, getTodayISO, cleanPhone, fmtPhone, monthOf, resolvePayerId, getFeeDueBase, getMoveInFeeDue, getFeeAssistStatus } = window.UTILS;
+    const { uid, fmtCur, fmtMon, fmtDateDisplay, fmtTime12, getTodayISO, cleanPhone, fmtPhone, monthOf, resolvePayerId, getFeeDueBase, getMoveInFeeDue, getFeeAssistStatus, addToGoogleCalendar, downloadICS } = window.UTILS;
 
     const Modal = ({ title, children, onClose, large }) => ( <div className="modal-backdrop" onClick={onClose}> <div className={`modal ${large?'large':''}`} onClick={e=>e.stopPropagation()}> <button className="close-x" onClick={onClose}>&times;</button> <div style={{fontWeight:700,fontSize:18,marginBottom:20, borderBottom:'1px solid var(--ring)', paddingBottom:12}}>{title}</div> {children} </div> </div> );
     const Donut = ({ paid, unpaid }) => { const total = paid + unpaid; if(total <= 0) return null; const pPct = (paid/total) * 100; const dash = (pPct * 251.2) / 100; return ( <div style={{position:'relative', width:140, height:140, margin:'0 auto'}}> <svg viewBox="0 0 100 100" style={{transform:'rotate(-90deg)'}}> <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="12" /> <circle cx="50" cy="50" r="40" fill="transparent" stroke="#22c55e" strokeWidth="12" strokeDasharray={`${dash} 251.2`} /> </svg> <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}> <div style={{fontSize:11,color:'#64748b'}}>Collected</div> <div style={{fontSize:16,fontWeight:700}}>{Math.round(pPct)}%</div> </div> </div> ); };
@@ -375,7 +429,22 @@
                      </div>
                      <div className="input-group"><label>{isDOC ? 'Arrival Date' : 'Graduation Date'}</label><input type="date" className="input" value={f.date} onChange={e=>setF({...f,date:e.target.value})} /></div>
                  </div>
-                 <button className="button primary" style={{marginTop:16,width:'100%'}} onClick={()=>onSave(f)}>{initial ? "Save Changes" : "Add to Queue"}</button>
+                 <div className="row">
+                     <div className="input-group"><label>Assigned House</label><select className="select" value={f.assignedHouseId} onChange={e=>setF({...f,assignedHouseId:e.target.value})}><option value="">No House Assigned Yet</option>{houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></div>
+                     <div className="input-group"><label>{isDOC ? 'Arrival Window' : 'Pickup Time'}</label><input type="time" className="input" value={f.time} onChange={e=>setF({...f,time:e.target.value})} /></div>
+                 </div>
+                 {!isDOC && (<div className="input-group"><label>Driver Name</label><input className="input" value={f.driver} onChange={e=>setF({...f,driver:e.target.value})} /></div>)}
+                 <div className="input-group"><label>Notes / Justification</label><textarea className="input" style={{height:60, padding:8}} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Reason for date, special instructions..." /></div>
+                 
+                 {/* CALENDAR BUTTONS */}
+                 {initial && f.date && (
+                    <div style={{marginBottom:16, display:'flex', gap:8}}>
+                        <button className="button" style={{flex:1, fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', gap:4}} onClick={()=>addToGoogleCalendar(f)}>📅 Add to Google Cal</button>
+                        <button className="button" style={{flex:1, fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', gap:4}} onClick={()=>downloadICS(f)}>🗓 Download .ICS (Outlook/Apple)</button>
+                    </div>
+                 )}
+                 
+                 <button className="button primary" style={{marginTop:8,width:'100%'}} onClick={()=>onSave(f)}>{initial ? "Save Changes" : "Add to Queue"}</button>
             </Modal>
         );
     }
@@ -475,7 +544,6 @@
             .catch(e => { console.error("Anon Auth Failed", e); showToast("Auth Error: " + e.message, "error"); });
 
             const appId = ARTIFACT_ID;
-            console.log('App ID:', appId);
             const unsubAuth = window.FB.onAuthStateChanged(auth, u => setFb({auth, db, uid: u?.uid, appId}));
             return () => unsubAuth();
         }, []);
@@ -487,8 +555,6 @@
                 if(s.exists()) {
                     const d = s.data();
                     const count = (d.residents || []).length;
-                    const houseCount = (d.houses || []).length;
-                    console.log('Data:', `Found ${count} residents, ${houseCount} houses`);
                     
                     // AUTO-RESTORE HOUSES IF MISSING
                     if (!d.houses || d.houses.length === 0) {
@@ -504,7 +570,7 @@
                     if(!d.payers || d.payers.length < PAYERS.length) d.payers = PAYERS;
                     setData(d);
                 } else {
-                    console.log('Data:', 'Document Not Found (Empty)');
+                    console.log('Data: Document Not Found (Empty)');
                     setData({ houses: DEFAULT_HOUSES, residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: DEFAULT_USERS });
                     // Initialize doc
                     window.FB.setDoc(docRef, { houses: DEFAULT_HOUSES, residents: [], payments: [], intakeQueue: [], users: DEFAULT_USERS });
