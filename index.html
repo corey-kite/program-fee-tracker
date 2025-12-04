@@ -65,8 +65,8 @@
     .auto-toast.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .auto-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     @keyframes fade { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 20px); } }
-    /* ERROR BOX */
-    #error-box { display:none; position:fixed; top:0; left:0; width:100%; background:#fee2e2; color:#b91c1c; padding:20px; z-index:9999; border-bottom:2px solid #ef4444; text-align:center; font-weight:bold; }
+    
+    #error-box { display:none; position:fixed; top:0; left:0; width:100%; background:#fee2e2; color:#b91c1c; padding:20px; z-index:9998; border-bottom:2px solid #ef4444; text-align:center; font-weight:bold; }
   </style>
 
   <script type="module">
@@ -94,19 +94,7 @@
     };
 
     /* --- CONSTANTS & CONFIG --- */
-    // Split key to avoid GitHub secret scanning alerts
-    const k1 = "AIzaSyBWFzHTy4lgLN";
-    const k2 = "L1xbLuOK3B3hsZPCzxIhI";
-    const FB_CONFIG = { 
-        apiKey: k1 + k2, 
-        authDomain: "tnh-yvr-client-track.firebaseapp.com", 
-        projectId: "tnh-yvr-client-track", 
-        storageBucket: "tnh-yvr-client-track.firebasestorage.app", 
-        messagingSenderId: "566937672669", 
-        appId: "1:566937672669:web:6add7a9f2359510c303434", 
-        measurementId: "G-0QPSTX0SD8" 
-    };
-    
+    const FB_CONFIG = { apiKey: "AIzaSyBWFzHTy4lgLNL1xbLuOK3B3hsZPCzxIhI", authDomain: "tnh-yvr-client-track.firebaseapp.com", projectId: "tnh-yvr-client-track", storageBucket: "tnh-yvr-client-track.firebasestorage.app", messagingSenderId: "566937672669", appId: "1:566937672669:web:6add7a9f2359510c303434", measurementId: "G-0QPSTX0SD8" };
     const LOGOS = { YVR: 'https://i.imgur.com/MNRYfAD.jpeg', TNH: 'https://i.imgur.com/tRlh6tm.jpeg', ALL: 'https://i.imgur.com/JtO5T2E.jpeg' };
     const ARTIFACT_ID = 'tnh-yvr-client-track'; 
     const FEE_CONST = { BASE: 750, DOC: 700, FEE: 300, DOC_GOAL: 4 };
@@ -576,7 +564,16 @@
             if(rData.futureDischargeReason) clean.futureDischargeReason = rData.futureDischargeReason;
             if(clean.id) { list = list.map(r => r.id === clean.id ? {...r, ...clean} : r); } 
             else { list.push({ ...clean, id: uid('RES'), active: true }); }
-            await updateStore({ residents: list });
+            
+            // NEW LOGIC: Check for intake ID and remove from queue if present (Safe Handover)
+            let queuePatch = {};
+            if (rData.fromIntakeId) {
+                const newQueue = data.intakeQueue.filter(i => i.id !== rData.fromIntakeId);
+                queuePatch = { intakeQueue: newQueue };
+                delete clean.fromIntakeId; // Don't save temp ID
+            }
+
+            await updateStore({ residents: list, ...queuePatch });
             setModal({type:null}); showToast('Client Saved');
         };
 
@@ -899,12 +896,11 @@
                                                 <td style={{textAlign:'right'}}>
                                                     <div style={{display:'flex', gap:6, justifyContent:'flex-end'}}>
                                                         <button className="button primary" style={{height:24,fontSize:10}} onClick={()=>{ 
-                                                            const prefill = { name:i.name, treatmentCenter: i.facility || i.treatmentCenter, iopGraduationDate: i.date || i.graduationDate, houseId:i.assignedHouseId, notes: i.notes };
-                                                            updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)});
+                                                            const prefill = { name:i.name, treatmentCenter: i.facility || i.treatmentCenter, iopGraduationDate: i.date || i.graduationDate, houseId:i.assignedHouseId, notes: i.notes, fromIntakeId: i.id };
                                                             setModal({type:'ADD_RES', data: prefill});
                                                         }}>Check In</button>
                                                         <button className="button ghost" style={{height:24,fontSize:10, color:'var(--brand1)', borderColor:'var(--ring)'}} onClick={()=>setModal({type:'INTAKE', data:i})}>Edit</button>
-                                                        <button className="button" style={{height:24,fontSize:10,color:'var(--red)', padding:'0 6px'}} onClick={()=>{ updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)}); }}>X</button>
+                                                        <button className="button" style={{height:24,fontSize:10,color:'var(--red)', padding:'0 6px'}} onClick={()=>{ if (confirm('Delete from intake queue?')) updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)}); }}>X</button>
                                                     </div>
                                                 </td>
                                             </tr>
