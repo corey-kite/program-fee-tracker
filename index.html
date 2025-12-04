@@ -865,6 +865,11 @@
                                                 <div style={{fontSize:11, color:'var(--muted)', marginTop:2}}>
                                                     📍 {i.facility || i.treatmentCenter || 'Unknown'}
                                                 </div>
+                                                
+                                                <div style={{display:'flex', gap:4, marginTop:8, paddingTop:8, borderTop:'1px solid #e2e8f0'}}>
+                                                    <button className="button" style={{fontSize:10, height:24, padding:'0 8px', flex:1}} onClick={(e)=>{ e.stopPropagation(); addToGoogleCalendar(i); }}>📅 Google</button>
+                                                    <button className="button" style={{fontSize:10, height:24, padding:'0 8px', flex:1}} onClick={(e)=>{ e.stopPropagation(); downloadICS(i); }}>🗓 Apple/Outlook</button>
+                                                </div>
                                             </div>
                                         ))
                                     }
@@ -967,6 +972,11 @@
                                                         }}>Check In</button>
                                                         <button className="button ghost" style={{height:24,fontSize:10, color:'var(--brand1)', borderColor:'var(--ring)'}} onClick={()=>setModal({type:'INTAKE', data:i})}>Edit</button>
                                                         <button className="button" style={{height:24,fontSize:10,color:'var(--red)', padding:'0 6px'}} onClick={()=>{ if (confirm('Delete from intake queue?')) updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)}); }}>X</button>
+                                                    </div>
+                                                    
+                                                    <div style={{display:'flex', gap:4, marginTop:8, justifyContent:'flex-end'}}>
+                                                        <button className="button" style={{fontSize:10, height:24, padding:'0 8px'}} onClick={()=>addToGoogleCalendar(i)}>📅 Google</button>
+                                                        <button className="button" style={{fontSize:10, height:24, padding:'0 8px'}} onClick={()=>downloadICS(i)}>🗓 Apple/Outlook</button>
                                                     </div>
                                                 </td>
                                             </tr>
