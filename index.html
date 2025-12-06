@@ -10,7 +10,7 @@
   <style>
     :root { --yvr-c: #2D4F6C; --yvr-b: #6B8E42; --yvr-a: #8BB9C8; --tnh-c: #2563eb; --tnh-b: #8B8000; --tnh-a: #0ea5e9; --all-c: #228B22; --all-b: #9370DB; --all-a: #8B8000; --brand1: var(--yvr-c); --brand2: var(--yvr-a); --brand3: var(--yvr-b); --bg: #f7f7fb; --txt: #0f172a; --muted: #64748b; --card: #fff; --ring: #dbe2ea; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --load-bg: #e2e8f0; --fee-bg: #fee2e2; --fee-txt: #991b1b; }
     * { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--txt); font: 14px/1.5 Inter, system-ui, -apple-system, sans-serif; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 16px; margin-top: 40px; } 
+    .container { max-width: 1400px; margin: 0 auto; padding: 16px; } 
     .header { color: #fff; border-radius: 24px; padding: 24px 20px; position: relative; overflow: hidden; background: linear-gradient(100deg, var(--brand1), var(--brand2), var(--brand3)); box-shadow: 0 6px 24px rgba(2, 6, 23, .15); }
     .header-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; position: relative; z-index: 2; }
     .brand { display: flex; align-items: center; gap: 12px; }
@@ -65,10 +65,8 @@
     .auto-toast.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .auto-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     @keyframes fade { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 20px); } }
-     
-    #status-bar { position:fixed; top:0; left:0; width:100%; height:32px; background:#1e293b; color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 16px; font-size:11px; z-index:10000; }
-    .status-ok { color: #4ade80; }
-    .status-err { color: #f87171; }
+    
+    #error-box { display:none; position:fixed; top:0; left:0; width:100%; background:#fee2e2; color:#b91c1c; padding:20px; z-index:9998; border-bottom:2px solid #ef4444; text-align:center; font-weight:bold; }
   </style>
 
   <script type="module">
@@ -82,23 +80,10 @@
   <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-  <div id="status-bar">
-    <span id="status-text">Initializing...</span>
-    <span id="db-info">DB: tnh-yvr-client-track</span>
-  </div>
   <div id="error-box"></div>
   <div id="root"></div>
 
   <script type="text/babel" data-presets="env,react">
-    /* --- HELPERS MOVED TO TOP LEVEL TO FIX SCOPE ERROR --- */
-    window.setStatus = (msg, type) => {
-        const el = document.getElementById('status-text');
-        if(el) {
-            el.innerText = msg;
-            el.className = type === 'error' ? 'status-err' : 'status-ok';
-        }
-    };
-
     /* --- ERROR HANDLING --- */
     window.onerror = function(msg, url, line, col, error) {
         const box = document.getElementById('error-box');
@@ -182,11 +167,26 @@
         cleanPhone: (p) => (''+p).replace(/\D/g,''),
         fmtPhone: (p) => { const c=(''+p).replace(/\D/g,''); if(c.length===10) return `(${c.slice(0,3)}) ${c.slice(3,6)}-${c.slice(6)}`; return p||''; },
         monthOf: (d) => d ? d.slice(0,7) : '',
-        resolvePayerId: (val) => { if(!val) return 'self'; const lower = val.toLowerCase(); if(PAYERS.find(p => p.id === val)) return val; if(lower.includes('northwest') || lower.includes('ncac')) return 'ncac'; if(lower.includes('yakima') || lower.includes('ynhc')) return 'ynhc'; if(lower.includes('valley') || lower.includes('vhc')) return 'vhc'; if(lower.includes('triumph') || lower.includes('ttc')) return 'ttc'; if(lower.includes('barth')) return 'barth'; if(lower.includes('merit')) return 'merit'; if(lower.includes('consistent')) return 'consistent'; if(lower.includes('monitoring') || lower.includes('wa monitor')) return 'wa_monitor'; if(lower.includes('entrust')) return 'entrust'; if(lower.includes('tribal')) return 'tribal'; if(lower.includes('family')) return 'family'; if(lower.includes('doc')) return 'doc'; if(lower.includes('dshs')) return 'dshs'; return 'other'; },
+        resolvePayerId: (val) => { if(!val) return 'self'; const lower = val.toLowerCase(); if(PAYERS.find(p => p.id === val)) return val; if(lower.includes('northwest') || lower.includes('ncac')) return 'ncac'; if(lower.includes('yakima') || lower.includes('ynhc')) return 'ynhc'; if(lower.includes('valley') || lower.includes('vhc')) return 'vhc'; if(lower.includes('triumph') || lower.includes('ttc')) return 'ttc'; if(lower.includes('barth')) return 'barth'; if(lower.includes('merit')) return 'merit'; if(lower.includes('consistent')) return 'consistent'; if(lower.includes('monitoring') || lower.includes('wa monitor')) return 'wa_monitor'; if(lower.includes('entrust')) return 'entrust'; if(lower.includes('tribal')) return 'tribal'; if(lower.includes('family')) return 'family'; if(lower.includes('doc')) return 'doc'; if(lower.includes('dshs')) return 'dshs'; return 'dshs'; },
         getFeeDueBase: (r, m) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); if(!r) return 0; if(r.name?.toLowerCase().includes('joey brooks')) { const dt = new Date(m + '-01'); if(dt >= new Date('2025-10-01') && dt <= new Date('2026-03-31')) return 500; } return pid === 'doc' ? FEE_CONST.DOC : FEE_CONST.BASE; },
         getMoveInFeeDue: (r) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); return (pid==='doc' || r.feeWaived) ? 0 : Math.max(0, FEE_CONST.FEE - (r.feePaidAmount||0)); },
         getFeeAssistStatus: (r) => { if (r.feeAssistStatus) return FEE_ASSIST_OPTS.find(o => o.id === r.feeAssistStatus) || FEE_ASSIST_OPTS[0]; if (r.needsRentalAssistance === true) return FEE_ASSIST_OPTS.find(o => o.id === 'needs'); return FEE_ASSIST_OPTS.find(o => o.id === 'none'); },
-         
+        
+        // --- FIX: SMART TX LABEL ---
+        getTxLabel: (type, facility) => {
+            if (type === 'DOC') return 'DOC';
+            const f = facility || '';
+            if (f.includes('JOTC') || f.includes('Oldham')) return 'JOTC';
+            if (f.includes('Sundown')) return 'Sundown';
+            if (f.includes('ABHS')) return 'ABHS';
+            if (f.includes('Barth')) return 'Barth';
+            if (f.includes('Valley')) return 'Valley';
+            if (f.includes('Triumph')) return 'Triumph';
+            if (f.includes('Merit')) return 'Merit';
+            if (f.includes('Tribal')) return 'Tribal';
+            return 'Inpatient'; // Default fallback
+        },
+
         // --- CALENDAR HELPERS ---
         addToGoogleCalendar: (i) => {
             if(!i.date) return alert('Date is required');
@@ -243,7 +243,7 @@
     };
 
     const { useState, useMemo, useEffect, useRef, Fragment } = React;
-    const { uid, fmtCur, fmtMon, fmtDateDisplay, fmtTime12, getTodayISO, cleanPhone, fmtPhone, monthOf, resolvePayerId, getFeeDueBase, getMoveInFeeDue, getFeeAssistStatus, addToGoogleCalendar, downloadICS } = window.UTILS;
+    const { uid, fmtCur, fmtMon, fmtDateDisplay, fmtTime12, getTodayISO, cleanPhone, fmtPhone, monthOf, resolvePayerId, getFeeDueBase, getMoveInFeeDue, getFeeAssistStatus, addToGoogleCalendar, downloadICS, getTxLabel } = window.UTILS;
 
     const Modal = ({ title, children, onClose, large }) => ( <div className="modal-backdrop" onClick={onClose}> <div className={`modal ${large?'large':''}`} onClick={e=>e.stopPropagation()}> <button className="close-x" onClick={onClose}>&times;</button> <div style={{fontWeight:700,fontSize:18,marginBottom:20, borderBottom:'1px solid var(--ring)', paddingBottom:12}}>{title}</div> {children} </div> </div> );
     const Donut = ({ paid, unpaid }) => { const total = paid + unpaid; if(total <= 0) return null; const pPct = (paid/total) * 100; const dash = (pPct * 251.2) / 100; return ( <div style={{position:'relative', width:140, height:140, margin:'0 auto'}}> <svg viewBox="0 0 100 100" style={{transform:'rotate(-90deg)'}}> <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="12" /> <circle cx="50" cy="50" r="40" fill="transparent" stroke="#22c55e" strokeWidth="12" strokeDasharray={`${dash} 251.2`} /> </svg> <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}> <div style={{fontSize:11,color:'#64748b'}}>Collected</div> <div style={{fontSize:16,fontWeight:700}}>{Math.round(pPct)}%</div> </div> </div> ); };
@@ -315,19 +315,53 @@
         const [userId, setUserId] = useState('');
         const [pin, setPin] = useState('');
         const [error, setError] = useState('');
-        useEffect(() => { if(users && users.length > 0 && !userId) setUserId(users[0].id); }, [users, userId]);
+        
+        // Auto-select first user
+        useEffect(() => { 
+            if(users && users.length > 0 && !userId) setUserId(users[0].id); 
+        }, [users, userId]);
+
+        // Handle Manual/Button Login
         const handleLogin = () => {
              const u = users.find(x => x.id === userId);
              if (u && u.pin === pin) onLogin(u);
              else setError('Incorrect PIN');
         };
+
+        // Auto-Login on PIN Change
+        const handlePinChange = (e) => {
+            const val = e.target.value;
+            setPin(val);
+            const u = users.find(x => x.id === userId);
+            if (u && u.pin === val) {
+                onLogin(u);
+            }
+        };
+
         return (
             <div className="login-screen">
                 <div className="login-box">
                     <img className="login-logo" src={LOGOS.ALL} alt="Logo" />
                     <h2 style={{margin:'0 0 24px'}}>Program Fee Tracker</h2>
-                    <div style={{textAlign:'left', marginBottom:16}}><label>Select User</label><select className="select" style={{width:'100%', height:44, fontSize:16}} value={userId} onChange={e=>setUserId(e.target.value)}>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
-                    <div style={{textAlign:'left', marginBottom:24}}><label>Enter PIN</label><input type="password" className="input" style={{width:'100%', height:44, fontSize:24, textAlign:'center', letterSpacing:4}} value={pin} onChange={e=>setPin(e.target.value)} placeholder="••••" maxLength={6} /></div>
+                    <div style={{textAlign:'left', marginBottom:16}}>
+                        <label>Select User</label>
+                        <select className="select" style={{width:'100%', height:44, fontSize:16}} value={userId} onChange={e=>setUserId(e.target.value)}>
+                            {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                    </div>
+                    <div style={{textAlign:'left', marginBottom:24}}>
+                        <label>Enter PIN</label>
+                        <input 
+                            type="password" 
+                            className="input" 
+                            style={{width:'100%', height:44, fontSize:24, textAlign:'center', letterSpacing:4}} 
+                            value={pin} 
+                            onChange={handlePinChange}
+                            placeholder="••••" 
+                            maxLength={6} 
+                            autoFocus
+                        />
+                    </div>
                     {error && <div style={{color:'red', marginBottom:16, fontWeight:600}}>{error}</div>}
                     <button className="button primary" style={{width:'100%', height:48, fontSize:16}} onClick={handleLogin}>Log In</button>
                 </div>
@@ -337,7 +371,7 @@
 
     const ChangePinModal = ({ user, onClose, onSave }) => {
         const [newPin, setNewPin] = useState('');
-        return ( <Modal title="Change Your PIN" onClose={onClose}> <div className="input-group"><label>New PIN</label><input type="password" class="input" value={newPin} onChange={e=>setNewPin(e.target.value)} /></div> <button className="button primary" style={{width:'100%'}} onClick={()=>onSave(newPin)}>Update PIN</button> </Modal> );
+        return ( <Modal title="Change Your PIN" onClose={onClose}> <div className="input-group"><label>New PIN</label><input type="password" className="input" value={newPin} onChange={e=>setNewPin(e.target.value)} /></div> <button className="button primary" style={{width:'100%'}} onClick={()=>onSave(newPin)}>Update PIN</button> </Modal> );
     };
 
     const ManageTeamModal = ({ users, onClose, onSave }) => {
@@ -479,7 +513,28 @@
     }
 
     const IntakeModal = ({ initial, houses, intakeQueue, onClose, onSave }) => {
-        const [f, setF] = useState(initial || { type: 'TREATMENT', name:'', facility:'', date: (initial?.date || initial?.graduationDate || ''), time:'', assignedHouseId: '', address:'', driver:'', notes:'' });
+        // --- FIX: Add Force-Reset Logic here as well ---
+        const def = { type: 'TREATMENT', name:'', docNumber: '', facility:'', date: '', time:'', assignedHouseId: '', address:'', driver:'', notes:'' };
+        const [f, setF] = useState(def);
+
+        useEffect(() => {
+            if (initial) {
+                // Ensure date is normalized if coming from old record with graduationDate
+                const loadedDate = initial.date || initial.graduationDate || '';
+                
+                // Fix: Auto-repair house selection if house was deleted
+                let loadHouseId = initial.assignedHouseId;
+                // FIX: Only check against houses if houses list is populated (prevent race condition)
+                if(loadHouseId && houses.length > 0 && !houses.find(h=>h.id===loadHouseId)) {
+                     loadHouseId = ''; // Reset if house deleted
+                }
+                
+                setF({ ...def, ...initial, date: loadedDate, assignedHouseId: loadHouseId });
+            } else {
+                setF(def);
+            }
+        }, [initial]); // Removed 'houses' dependency to prevent reset loop
+
         const isDOC = f.type === 'DOC';
         return (
             <Modal title={initial ? "Edit Intake" : "Add Intake"} onClose={onClose}>
@@ -487,7 +542,10 @@
                      <button className={`button ${!isDOC?'primary':'ghost'}`} style={{flex:1, color: !isDOC?'#fff':'var(--txt)'}} onClick={()=>setF({...f, type:'TREATMENT'})}>From Treatment</button>
                      <button className={`button ${isDOC?'primary':'ghost'}`} style={{flex:1, color: isDOC?'#fff':'var(--txt)'}} onClick={()=>setF({...f, type:'DOC'})}>From DOC</button>
                  </div>
-                 <div className="input-group"><label>Name</label><input className="input" value={f.name} onChange={e=>setF({...f,name:e.target.value})} /></div>
+                 <div className="row">
+                    <div className="input-group"><label>Name</label><input className="input" value={f.name} onChange={e=>setF({...f,name:e.target.value})} /></div>
+                    <div className="input-group"><label>DOC Number</label><input className="input" value={f.docNumber || ''} onChange={e=>setF({...f,docNumber:e.target.value})} placeholder="Optional" /></div>
+                 </div>
                  <div className="row">
                      <div className="input-group"><label>{isDOC ? 'Origin Facility' : 'Treatment Center'}</label>
                         {isDOC ? (<input className="input" value={f.facility} onChange={e=>setF({...f,facility:e.target.value})} placeholder="e.g. Monroe" />) : (
@@ -586,7 +644,16 @@
         const [data, setData] = useState({ houses: [], residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: [] });
         const [view, setView] = useState('dashboard');
         const [toast, setToast] = useState(null);
-        const [currentUser, setCurrentUser] = useState(null); 
+        
+        // --- FIX: SESSION STORAGE INITIALIZATION ---
+        const [currentUser, setCurrentUser] = useState(() => {
+            try {
+                const saved = sessionStorage.getItem('pft_user');
+                return saved ? JSON.parse(saved) : null;
+            } catch(e) {
+                return null;
+            }
+        });
 
         const [org, setOrg] = useState('ALL');
         const [month, setMonth] = useState(getTodayISO().slice(0, 7));
@@ -626,8 +693,8 @@
             const db = window.FB.getFirestore(app);
              
             window.FB.signInAnonymously(auth)
-            .then(() => { window.setStatus('Connected', 'ok'); })
-            .catch(e => { console.error("Anon Auth Failed", e); window.setStatus('Auth Error: ' + e.message, 'error'); });
+            .then(() => { console.log('Connected'); })
+            .catch(e => { console.error("Anon Auth Failed", e); showToast('Auth Error: ' + e.message, 'error'); });
 
             const appId = ARTIFACT_ID;
             const unsubAuth = window.FB.onAuthStateChanged(auth, u => setFb({auth, db, uid: u?.uid, appId}));
@@ -654,7 +721,7 @@
                     const count = cleanResidents.length;
                     const activeCount = cleanResidents.filter(r => r.active).length;
                     const houseCount = (d.houses || []).length;
-                    window.setStatus(`Connected: ${count} Residents (${activeCount} Active), ${houseCount} Houses`, 'ok');
+                    console.log(`Connected: ${count} Residents (${activeCount} Active), ${houseCount} Houses`);
                      
                     // 2. Fix Houses: Ensure houses have rooms array (prevents crash)
                     d.houses = (d.houses || []).map(h => ({ ...h, rooms: h.rooms || [] }));
@@ -673,14 +740,14 @@
                      
                     setData(d);
                 } else {
-                    window.setStatus('Connected (0 Records)', 'ok');
+                    console.log('Connected (0 Records)');
                     setData({ houses: DEFAULT_HOUSES, residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: DEFAULT_USERS });
                     // Initialize doc
                     window.FB.setDoc(docRef, { houses: DEFAULT_HOUSES, residents: [], payments: [], intakeQueue: [], users: DEFAULT_USERS });
                 }
             }, (err) => { 
                 console.error("Firestore Error:", err); 
-                window.setStatus('Database Error: ' + err.message, 'error');
+                showToast('Database Error: ' + err.message, 'error');
             });
             return () => unsub();
         }, [fb.db, fb.uid, fb.appId]);
@@ -695,10 +762,26 @@
             } catch(e) { showToast('Save failed: ' + e.message, 'error'); return false; }
         };
         
+        // --- FIX: SESSION STORAGE LOGOUT ---
+        const handleLoginUser = (u) => {
+            sessionStorage.setItem('pft_user', JSON.stringify(u));
+            setCurrentUser(u);
+        };
+
+        const handleLogout = () => {
+            sessionStorage.removeItem('pft_user');
+            setCurrentUser(null);
+        };
+
         const handleUpdatePin = (newPin) => {
              const updatedUsers = data.users.map(u => u.id === currentUser.id ? { ...u, pin: newPin } : u);
              updateStore({ users: updatedUsers });
-             setCurrentUser(prev => ({ ...prev, pin: newPin }));
+             
+             // Update local session too
+             const updatedUser = { ...currentUser, pin: newPin };
+             sessionStorage.setItem('pft_user', JSON.stringify(updatedUser));
+             setCurrentUser(updatedUser);
+             
              setModal({ type: null });
              showToast("PIN Updated Successfully");
         };
@@ -914,7 +997,7 @@
         }, [visibleHouses, data.residents, data.payments, month, filters.house, org]);
 
         if(!fb.auth) return <div style={{height:'100vh',display:'flex',justifyContent:'center',alignItems:'center'}}>Loading Tracker...</div>;
-        if(!currentUser) { return <LoginView users={data.users || []} onLogin={setCurrentUser} />; }
+        if(!currentUser) { return <LoginView users={data.users || []} onLogin={handleLoginUser} />; }
 
         return (
             <div className="container">
@@ -927,7 +1010,7 @@
                         <div className="toolbar">
                             {currentUser.role === 'admin' && <button className="button primary" style={{marginRight:8}} onClick={()=>setModal({type:'TEAM'})}>Manage Team</button>}
                             <button className="button primary" style={{marginRight:8}} onClick={()=>setModal({type:'CHANGE_PIN'})}>Change PIN</button>
-                            <button className="button ghost" onClick={()=>setCurrentUser(null)}>Log Out</button>
+                            <button className="button ghost" onClick={handleLogout}>Log Out</button>
                             <div style={{width:1, height:24, background:'rgba(255,255,255,0.3)', margin:'0 8px'}}></div>
                             <select className="select" value={org} onChange={e=>setOrg(e.target.value)}><option value="ALL">All Orgs</option>{uniqueOrgs.map(o=><option key={o} value={o}>{o}</option>)}</select>
                             <select className="select" value={month} onChange={e=>setMonth(e.target.value)}>{monthList.map(m=><option key={m} value={m}>{fmtMon(m)}</option>)}</select>
@@ -1127,7 +1210,7 @@
                                         <th>Address</th>
                                         <th>Assigned To</th>
                                         <th>Notes</th>
-                                        <th>Action</th>
+                                        <th style={{textAlign:'right'}}>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1136,18 +1219,29 @@
                                         return (
                                             <tr key={i.id} onClick={()=>setModal({type:'INTAKE', data:i})} style={{cursor:'pointer'}}>
                                                 <td>{fmtDateDisplay(i.date || i.graduationDate)}<br/><span className="text-sm">{fmtTime12(i.time)}</span></td>
-                                                <td><strong>{i.name}</strong><br/><span className="badge">{i.type}</span></td>
+                                                <td>
+                                                    <strong>{i.name}</strong>
+                                                    {i.docNumber && <div style={{fontSize:11, color:'var(--muted)'}}>DOC #: {i.docNumber}</div>}
+                                                    {/* --- FIX: SMART BADGE LABEL --- */}
+                                                    <br/><span className="badge" style={{backgroundColor: i.type==='DOC'?'#eff6ff':'#f3e8ff', color: i.type==='DOC'?'#1e40af':'#7e22ce', border:'none'}}>{getTxLabel(i.type, i.facility || i.treatmentCenter)}</span>
+                                                </td>
                                                 <td>{i.facility || i.treatmentCenter}</td>
                                                 <td>{i.address || ""}</td>
                                                 <td>{house ? house.name : <span style={{color:'orange'}}>Unassigned</span>}</td>
                                                 <td style={{maxWidth:200, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{i.notes}</td>
-                                                <td>
-                                                    <button className="button primary" style={{fontSize:11, height:24, padding:'0 8px'}} onClick={(e)=>{ e.stopPropagation(); setModal({type:'ADD_RES', data:{name:i.name, moveInDate:i.date||i.graduationDate, houseId:i.assignedHouseId, fromIntakeId:i.id}}); }}>Promote to Client</button>
+                                                <td style={{textAlign:'right'}}>
+                                                    <div style={{display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end'}}>
+                                                         <button className="button primary" style={{fontSize:11, height:28, width:'100%'}} onClick={(e)=>{ e.stopPropagation(); setModal({type:'ADD_RES', data:{name:i.name, docNumber: i.docNumber, moveInDate:i.date||i.graduationDate, houseId:i.assignedHouseId, fromIntakeId:i.id}}); }}>Promote to Client</button>
+                                                         <div style={{display:'flex', gap:6}}>
+                                                            <button className="button" style={{fontSize:11, height:24, flex:1}} onClick={(e)=>{ e.stopPropagation(); setModal({type:'INTAKE', data:i}); }}>Edit</button>
+                                                            <button className="button" style={{fontSize:11, height:24, color:'red', borderColor:'var(--red)'}} onClick={(e)=>{ e.stopPropagation(); if(confirm('Remove from queue?')) updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)}); }}>Delete</button>
+                                                         </div>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         )
                                     })}
-                                    {data.intakeQueue.length === 0 && <tr><td colSpan={6} style={{textAlign:'center', padding:20}}>No pending intakes.</td></tr>}
+                                    {data.intakeQueue.length === 0 && <tr><td colSpan={7} style={{textAlign:'center', padding:20}}>No pending intakes.</td></tr>}
                                 </tbody>
                             </table>
                         </div>
@@ -1169,7 +1263,17 @@
                 )}
                 
                 {modal.type === 'PAY' && ( <PayModal resident={modal.data.c} month={modal.data.m} payments={data.payments} payers={data.payers} onClose={()=>setModal({type:null})} onSave={handleSavePayment} /> )}
-                {modal.type === 'INTAKE' && ( <IntakeModal initial={modal.data} houses={visibleHouses} intakeQueue={data.intakeQueue} onClose={()=>setModal({type:null})} onSave={handleSaveIntake} /> )}
+                {/* --- FIX: Use data.houses (all houses) instead of visibleHouses for IntakeModal --- */}
+                {modal.type === 'INTAKE' && ( 
+                    <IntakeModal 
+                        key={modal.data ? modal.data.id : 'new_intake'}
+                        initial={modal.data} 
+                        houses={data.houses} 
+                        intakeQueue={data.intakeQueue} 
+                        onClose={()=>setModal({type:null})} 
+                        onSave={handleSaveIntake} 
+                    /> 
+                )}
                 {modal.type === 'ADD_HOUSE' && ( <AddHouseModal onClose={()=>setModal({type:null})} onSave={handleCreateHouse} uniqueOrgs={uniqueOrgs} /> )}
                 {modal.type === 'CHANGE_PIN' && ( <ChangePinModal user={currentUser} onClose={()=>setModal({type:null})} onSave={handleUpdatePin} /> )}
                 {modal.type === 'TEAM' && ( <ManageTeamModal users={data.users} onClose={()=>setModal({type:null})} onSave={async (team)=>{ await updateStore({users:team}); setModal({type:null}); showToast('Team Updated'); }} /> )}
