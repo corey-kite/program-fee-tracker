@@ -4,13 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Program Fee Tracker</title>
-  
+   
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%230ea5e9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M32 14L12 32h6v18h28V32h6z' fill='%23fff'/%3E%3C/svg%3E" />
-  
+   
   <style>
     :root { --yvr-c: #2D4F6C; --yvr-b: #6B8E42; --yvr-a: #8BB9C8; --tnh-c: #2563eb; --tnh-b: #8B8000; --tnh-a: #0ea5e9; --all-c: #228B22; --all-b: #9370DB; --all-a: #8B8000; --brand1: var(--yvr-c); --brand2: var(--yvr-a); --brand3: var(--yvr-b); --bg: #f7f7fb; --txt: #0f172a; --muted: #64748b; --card: #fff; --ring: #dbe2ea; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --load-bg: #e2e8f0; --fee-bg: #fee2e2; --fee-txt: #991b1b; }
     * { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--txt); font: 14px/1.5 Inter, system-ui, -apple-system, sans-serif; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 16px; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 16px; margin-top: 40px; } 
     .header { color: #fff; border-radius: 24px; padding: 24px 20px; position: relative; overflow: hidden; background: linear-gradient(100deg, var(--brand1), var(--brand2), var(--brand3)); box-shadow: 0 6px 24px rgba(2, 6, 23, .15); }
     .header-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; position: relative; z-index: 2; }
     .brand { display: flex; align-items: center; gap: 12px; }
@@ -65,8 +65,10 @@
     .auto-toast.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .auto-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     @keyframes fade { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 20px); } }
-    
-    #error-box { display:none; position:fixed; top:0; left:0; width:100%; background:#fee2e2; color:#b91c1c; padding:20px; z-index:9998; border-bottom:2px solid #ef4444; text-align:center; font-weight:bold; }
+     
+    #status-bar { position:fixed; top:0; left:0; width:100%; height:32px; background:#1e293b; color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 16px; font-size:11px; z-index:10000; }
+    .status-ok { color: #4ade80; }
+    .status-err { color: #f87171; }
   </style>
 
   <script type="module">
@@ -80,15 +82,30 @@
   <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
+  <div id="status-bar">
+    <span id="status-text">Initializing...</span>
+    <span id="db-info">DB: tnh-yvr-client-track</span>
+  </div>
   <div id="error-box"></div>
   <div id="root"></div>
 
   <script type="text/babel" data-presets="env,react">
+    /* --- HELPERS MOVED TO TOP LEVEL TO FIX SCOPE ERROR --- */
+    window.setStatus = (msg, type) => {
+        const el = document.getElementById('status-text');
+        if(el) {
+            el.innerText = msg;
+            el.className = type === 'error' ? 'status-err' : 'status-ok';
+        }
+    };
+
     /* --- ERROR HANDLING --- */
     window.onerror = function(msg, url, line, col, error) {
         const box = document.getElementById('error-box');
-        box.style.display = 'block';
-        box.innerText = `CRITICAL ERROR: ${msg}`;
+        if(box) {
+            box.style.display = 'block';
+            box.innerText = `CRITICAL ERROR: ${msg}`;
+        }
         console.error(error);
         return false;
     };
@@ -98,7 +115,7 @@
     const LOGOS = { YVR: 'https://i.imgur.com/MNRYfAD.jpeg', TNH: 'https://i.imgur.com/tRlh6tm.jpeg', ALL: 'https://i.imgur.com/JtO5T2E.jpeg' };
     const ARTIFACT_ID = 'tnh-yvr-client-track'; 
     const FEE_CONST = { BASE: 750, DOC: 700, FEE: 300, DOC_GOAL: 4 };
-    
+     
     const DEFAULT_USERS = [
         { id: 'U_1', name: 'Juan Orozco', pin: '1234', role: 'admin' },
         { id: 'U_2', name: 'Adam Orozco', pin: '1234', role: 'admin' },
@@ -111,7 +128,7 @@
     const ETHNICITY_OPTS = ['Unknown', 'Hispanic or Latino', 'American Indian or Alaska Native', 'Asian', 'Black or African American', 'Native Hawaiian or Other Pacific Islander', 'White', 'Two or More Races', 'Other'];
     const AGE_RANGES = ['18-25', '26-35', '36-45', '46-55', '56+', 'Unknown'];
     const TREATMENT_CENTERS = ["Select TX Center...", "Sundown M Ranch", "James Oldham Treatment Center (JOTC)", "ABHS", "Barth Clinic", "Valley Health and Counseling", "Triumph Treatment", "Merit Resources", "Tribal Program", "Other"];
-    
+     
     const FEE_ASSIST_OPTS = [
         {id: 'none', label: 'Unknown / N/A', color: '#64748b', bg: '#f8fafc'},
         {id: 'needs', label: 'Needs Assistance', color: '#dc2626', bg: '#fef2f2'},
@@ -120,7 +137,7 @@
         {id: 'receiving', label: 'Receiving Assistance', color: '#16a34a', bg: '#dcfce7'},
         {id: 'not_needed', label: 'Not Needed', color: '#475569', bg: '#f1f5f9'}
     ];
-    
+     
     const PAYER_STYLES = {
         'self': { bg: '#f0fdf4', txt: '#166534', b: '#bbf7d0' }, 'dshs': { bg: '#ecfccb', txt: '#3f6212', b: '#d9f99d' }, 'doc': { bg: '#eff6ff', txt: '#1e40af', b: '#bfdbfe' },
         'tribal': { bg: '#fff7ed', txt: '#9a3412', b: '#fed7aa' }, 'ncac': { bg: '#faf5ff', txt: '#6b21a8', b: '#e9d5ff' }, 'ynhc': { bg: '#d1fae5', txt: '#064e3b', b: '#10b981' },
@@ -128,20 +145,20 @@
         'family': { bg: '#fdf2f8', txt: '#be185d', b: '#fbcfe8' }, 'vhc': { bg: '#ecfeff', txt: '#0e7490', b: '#a5f3fc' }, 'barth': { bg: '#fef2f2', txt: '#b91c1c', b: '#fecaca' },
         'merit': { bg: '#fff7ed', txt: '#c2410c', b: '#fdba74' }, 'ttc': { bg: '#eff6ff', txt: '#1d4ed8', b: '#93c5fd' }, 'default': { bg: '#f3f4f6', txt: '#374151', b: '#d1d5db' }
     };
-    
+     
     const DSHS_OPTS = [
         {id:'enrolled',l:'Enrolled (Receiving ABD/HEN)',c:'#166534',b:'#dcfce7'}, {id:'needs_apply',l:'Needs to Apply (Go to DSHS)',c:'#991b1b',b:'#fee2e2'},
         {id:'submitted',l:'Application Submitted (Waiting)',c:'#b45309',b:'#fef3c7'}, {id:'pending_interview',l:'Pending Interview',c:'#b45309',b:'#fef3c7'},
         {id:'pending_med',l:'Pending Medical Review',c:'#b45309',b:'#fef3c7'}, {id:'self_pay',l:'Not Needed (Self-Pay/Job)',c:'#475569',b:'#f1f5f9'},
         {id:'refused',l:'Not Needed (Refused/Opt-out)',c:'#475569',b:'#f1f5f9'}, {id:'ineligible',l:'Ineligible',c:'#475569',b:'#f1f5f9'}, {id:'na',l:'N/A (Unknown)',c:'#64748b',b:'#f8fafc'}
     ];
-    
+     
     const IOP_OPTS = [
         {id:'needs_intake',l:'Needs Intake/Assessment',c:'#991b1b',b:'#fee2e2'}, {id:'active_iop',l:'Active IOP',c:'#b45309',b:'#fef3c7'},
         {id:'active_op',l:'Active OP',c:'#b45309',b:'#fef3c7'}, {id:'aftercare',l:'Enrolled in Aftercare',c:'#166534',b:'#dcfce7'},
         {id:'graduated',l:'Graduated Treatment',c:'#15803d',b:'#dcfce7'}, {id:'not_required',l:'Not Required / Completed Prior',c:'#475569',b:'#f1f5f9'}, {id:'na',l:'N/A (Unknown)',c:'#64748b',b:'#f8fafc'}
     ];
-    
+     
     const PAYERS = [
         {id:'self',name:'Self Pay'}, {id:'dshs',name:'DSHS'}, {id:'doc',name:'DOC'}, {id:'tribal',name:'Tribal'}, {id:'other',name:'Other'}, {id:'ncac',name:'NCAC'},
         {id:'ynhc',name:'YNHC'}, {id:'entrust',name:'Entrust'}, {id:'consistent',name:'Consistent'}, {id:'wa_monitor',name:'WA Monitor'}, {id:'family',name:'Family'},
@@ -169,7 +186,7 @@
         getFeeDueBase: (r, m) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); if(!r) return 0; if(r.name?.toLowerCase().includes('joey brooks')) { const dt = new Date(m + '-01'); if(dt >= new Date('2025-10-01') && dt <= new Date('2026-03-31')) return 500; } return pid === 'doc' ? FEE_CONST.DOC : FEE_CONST.BASE; },
         getMoveInFeeDue: (r) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); return (pid==='doc' || r.feeWaived) ? 0 : Math.max(0, FEE_CONST.FEE - (r.feePaidAmount||0)); },
         getFeeAssistStatus: (r) => { if (r.feeAssistStatus) return FEE_ASSIST_OPTS.find(o => o.id === r.feeAssistStatus) || FEE_ASSIST_OPTS[0]; if (r.needsRentalAssistance === true) return FEE_ASSIST_OPTS.find(o => o.id === 'needs'); return FEE_ASSIST_OPTS.find(o => o.id === 'none'); },
-        
+         
         // --- CALENDAR HELPERS ---
         addToGoogleCalendar: (i) => {
             if(!i.date) return alert('Date is required');
@@ -178,14 +195,14 @@
             const endD = new Date(d.getTime() + 60*60*1000); // 1 hour duration
 
             const fmt = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
-            
+             
             const url = new URL('https://calendar.google.com/calendar/render');
             url.searchParams.append('action', 'TEMPLATE');
             url.searchParams.append('text', `Pickup: ${i.name}`);
             url.searchParams.append('dates', `${fmt(d)}/${fmt(endD)}`);
             url.searchParams.append('details', `Pickup from ${i.facility || 'Unknown location'}.\nNotes: ${i.notes || ''}\nDriver: ${i.driver || 'TBD'}`);
             url.searchParams.append('location', i.address || i.facility || '');
-            
+             
             window.open(url.toString(), '_blank');
         },
 
@@ -268,6 +285,7 @@
                                 <div><span className="text-bold">Room:</span> {h ? h.name : 'Unassigned'} {r.roomId && r.roomId.split('_')[1]}-{r.bed}</div>
                                 <div><span className="text-bold">Ph:</span> {fmtPhone(r.phoneNumber)||'--'}</div>
                                 <div><span className="text-bold">Age:</span> {r.age || '--'}</div>
+                                {r.docNumber && <div><span className="text-bold">DOC #:</span> {r.docNumber}</div>}
                                 <div><span className="text-bold">Race:</span> {r.ethnicity || '--'}</div>
                                 <div style={{gridColumn:'span 2', color:'var(--txt)', marginTop:4}}><span className="text-bold">Treatment:</span><span className="badge" style={{color:iop.c,background:iop.b,borderColor:iop.c+'40', margin:'0 6px'}}>{iop.l}</span>{(r.treatmentCenter && r.treatmentCenter!=='Not Attending Treatment') && (<span>at <strong>{r.treatmentCenter}</strong></span>)}</div>
                             </div>
@@ -343,13 +361,57 @@
     }
 
     const ResidentModal = ({ initial, houses, payers, uniqueOrgs, onClose, onSave, onArchive }) => {
-        const def = { name:'', org:'YVR', houseId:houses[0]?.id, roomId:houses[0]?.rooms[0]?.id, bed:1, payerOrgId:'self', dshsProgram:'na', iopStatus:'na', feeWaived:false, moveInMonth: monthOf(getTodayISO()), phoneNumber:'', age:'', ethnicity:'Unknown', treatmentCenter:'', iopGraduationDate:'', moveInDate:'', needsRentalAssistance: false, feePaidAmount: 0 };
-        const [f, setF] = useState({ ...def, ...initial });
+        // --- FIX: Logic to auto-fix missing houses on init ---
+        let startHouseId = initial ? initial.houseId : houses[0]?.id;
+        let startOrg = initial ? initial.org : houses[0]?.org;
+        let startRoomId = initial ? initial.roomId : houses[0]?.rooms?.[0]?.id;
+        
+        // If the house ID doesn't exist in current list (deleted house), reset to first house
+        const houseExists = houses.find(h => h.id === startHouseId);
+        if (!houseExists && houses.length > 0) {
+             startHouseId = houses[0].id;
+             startOrg = houses[0].org;
+             startRoomId = houses[0].rooms?.[0]?.id;
+        } else if (houseExists) {
+             // Ensure Org matches House
+             startOrg = houseExists.org;
+        }
+
+        const def = { name:'', org:startOrg, houseId:startHouseId, roomId:startRoomId, bed:1, payerOrgId:'self', dshsProgram:'na', iopStatus:'na', feeWaived:false, moveInMonth: monthOf(getTodayISO()), phoneNumber:'', age:'', ethnicity:'Unknown', treatmentCenter:'', iopGraduationDate:'', moveInDate:'', needsRentalAssistance: false, feePaidAmount: 0, docNumber: '' };
+        
+        // --- FIX: NO EFFECT HERE - DIRECT INITIALIZATION ---
+        const [f, setF] = useState({ 
+            ...def, 
+            ...initial, 
+            houseId: startHouseId, 
+            org: startOrg,
+            roomId: startRoomId,
+            payerOrgId: resolvePayerId(initial ? (initial.payerOrgId || 'self') : 'self')
+        });
+
         const [isArchiving, setIsArchiving] = useState(false);
         const [archiveData, setArchiveData] = useState({ date: getTodayISO(), reason: '' });
         const [reminderData, setReminderData] = useState({ date: '', time: '', note: '' }); 
-        useEffect(() => { if (initial?.payerOrgId) setF(prev => ({ ...prev, payerOrgId: resolvePayerId(initial.payerOrgId) })); }, [initial]);
         
+        const handleOrgChange = (e) => {
+            const newOrg = e.target.value;
+            const firstHouse = houses.find(h => h.org === newOrg);
+            const firstRoom = firstHouse?.rooms?.[0];
+            setF({ ...f, org: newOrg, houseId: firstHouse?.id || '', roomId: firstRoom?.id || '' });
+        };
+
+        const handleHouseChange = (e) => {
+            const newHouseId = e.target.value;
+            const house = houses.find(h => h.id === newHouseId);
+            const firstRoom = house?.rooms?.[0];
+            setF({ 
+                ...f, 
+                houseId: newHouseId, 
+                roomId: firstRoom?.id || '',
+                org: house ? house.org : f.org 
+            });
+        };
+
         const handleGoogleCalendar = () => {
             if(!reminderData.date || !reminderData.time) { alert("Please select a date and time."); return; }
             const start = new Date(`${reminderData.date}T${reminderData.time}`).toISOString().replace(/-|:|\.\d\d\d/g,"");
@@ -368,11 +430,11 @@
                 {isArchived && (<div style={{marginBottom:16, padding:'12px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8}}><div style={{fontWeight:700, color:'#991b1b'}}>⚠ Client is ARCHIVED</div></div>)}
                 <div style={{background:'#f8fafc', padding:12, borderRadius:8, border:'1px solid #e2e8f0', marginBottom:16}}>
                     <div className="row">
-                        <div className="input-group"><label>House</label><select className="select" value={f.houseId} onChange={e=>setF({...f,houseId:e.target.value})}>{houses.filter(h=>h.org===f.org).map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></div>
+                        <div className="input-group"><label>House</label><select className="select" value={f.houseId} onChange={handleHouseChange}>{houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></div>
                         <div className="input-group"><label>Room</label><select className="select" value={f.roomId} onChange={e=>setF({...f,roomId:e.target.value})}>{houses.find(h=>h.id===f.houseId)?.rooms.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</select></div>
                     </div>
                     <div className="row">
-                        <div className="input-group"><label>Org</label><select className="select" value={f.org} onChange={e=>setF({...f,org:e.target.value})}>{uniqueOrgs.map(o=><option key={o}>{o}</option>)}</select></div>
+                        <div className="input-group"><label>Org</label><select className="select" value={f.org} onChange={handleOrgChange}>{uniqueOrgs.map(o=><option key={o}>{o}</option>)}</select></div>
                         <div className="input-group"><label>Payer</label><select className="select" value={f.payerOrgId} onChange={e=>setF({...f,payerOrgId:e.target.value})}>{PAYERS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
                     </div>
                     <div style={{marginTop:8, borderTop:'1px dashed #e2e8f0', paddingTop:8}}>
@@ -384,12 +446,17 @@
                     <div className="input-group"><label>Phone</label><input className="input" value={f.phoneNumber} onChange={e=>setF({...f,phoneNumber:e.target.value})} /></div>
                     <div className="input-group"><label>Bed #</label><input type="number" className="input" value={f.bed} onChange={e=>setF({...f,bed:parseInt(e.target.value)})} /></div>
                 </div>
+                <div className="row">
+                    <div className="input-group"><label>DOC Number</label><input className="input" value={f.docNumber || ''} onChange={e=>setF({...f,docNumber:e.target.value})} placeholder="WADOC #" /></div>
+                    <div className="input-group"><label>Age</label><input type="number" className="input" value={f.age} onChange={e=>setF({...f,age:e.target.value})} /></div>
+                </div>
                 <div style={{fontWeight:700, marginTop:16, marginBottom:8, borderBottom:'1px solid #eee'}}>Move-In / Fees</div>
                 <div className="row">
                     <div className="input-group"><label>Move In Date</label><input type="date" className="input" value={f.moveInDate} onChange={e=>setF({...f,moveInDate:e.target.value})} /></div>
                     <div className="input-group"><label>Fee Paid So Far ($)</label><input type="number" className="input" value={f.feePaidAmount} onChange={e=>setF({...f, feePaidAmount:parseFloat(e.target.value)})} /></div>
                 </div>
-                
+                <div style={{display:'flex',alignItems:'center', marginBottom:16}}><label><input type="checkbox" checked={!!f.feeWaived} onChange={e=>setF({...f, feeWaived:e.target.checked})} /> Waive Move-in Fee</label></div>
+                 
                 {!isArchived && (
                     <div style={{marginTop:16, padding:'12px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:8}}>
                         <div style={{fontWeight:700, color:'#1e40af', marginBottom:8}}>Set Reminder (Google Calendar)</div>
@@ -433,14 +500,33 @@
                      <div className="input-group"><label>Assigned House</label><select className="select" value={f.assignedHouseId} onChange={e=>setF({...f,assignedHouseId:e.target.value})}><option value="">No House Assigned Yet</option>{houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></div>
                      <div className="input-group"><label>{isDOC ? 'Arrival Window' : 'Pickup Time'}</label><input type="time" className="input" value={f.time} onChange={e=>setF({...f,time:e.target.value})} /></div>
                  </div>
-                 {!isDOC && (<div className="input-group"><label>Driver Name</label><input className="input" value={f.driver} onChange={e=>setF({...f,driver:e.target.value})} /></div>)}
+                 <div className="input-group">
+                     <label>Address / Destination</label>
+                     <input
+                         className="input"
+                         value={f.address || ''}
+                         onChange={e => setF({ ...f, address: e.target.value })}
+                         placeholder="Street, city, etc."
+                     />
+                 </div>
+                 {!isDOC && (
+                     <div className="input-group">
+                         <label>Driver</label>
+                         <input
+                             className="input"
+                             value={f.driver || ''}
+                             onChange={e => setF({ ...f, driver: e.target.value })}
+                             placeholder="Assigned driver (optional)"
+                         />
+                     </div>
+                 )}
                  <div className="input-group"><label>Notes / Justification</label><textarea className="input" style={{height:60, padding:8}} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Reason for date, special instructions..." /></div>
                  
                  {/* CALENDAR BUTTONS */}
                  {initial && f.date && (
                     <div style={{marginBottom:16, display:'flex', gap:8}}>
-                        <button className="button" style={{flex:1, fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', gap:4}} onClick={()=>addToGoogleCalendar(f)}>📅 Add to Google Cal</button>
-                        <button className="button" style={{flex:1, fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', gap:4}} onClick={()=>downloadICS(f)}>🗓 Download .ICS (Outlook/Apple)</button>
+                        <button className="button" style={{flex:1, fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', gap:4}} onClick={()=>addToGoogleCalendar(f)}>📅 Google</button>
+                        <button className="button" style={{flex:1, fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', gap:4}} onClick={()=>downloadICS(f)}>🗓 Apple/Outlook</button>
                     </div>
                  )}
                  
@@ -493,7 +579,7 @@
             </Modal>
         )
     }
-    
+     
     // --- MAIN APP ---
     function App() {
         const [fb, setFb] = useState({ auth: null, db: null, uid: null, appId: null });
@@ -538,10 +624,10 @@
             const app = window.FB.initializeApp(FB_CONFIG);
             const auth = window.FB.getAuth(app);
             const db = window.FB.getFirestore(app);
-            
+             
             window.FB.signInAnonymously(auth)
-            .then(() => { console.log('Auth: Logged in'); })
-            .catch(e => { console.error("Anon Auth Failed", e); showToast("Auth Error: " + e.message, "error"); });
+            .then(() => { window.setStatus('Connected', 'ok'); })
+            .catch(e => { console.error("Anon Auth Failed", e); window.setStatus('Auth Error: ' + e.message, 'error'); });
 
             const appId = ARTIFACT_ID;
             const unsubAuth = window.FB.onAuthStateChanged(auth, u => setFb({auth, db, uid: u?.uid, appId}));
@@ -554,30 +640,47 @@
             const unsub = window.FB.onSnapshot(docRef, (s) => {
                 if(s.exists()) {
                     const d = s.data();
-                    const count = (d.residents || []).length;
-                    
-                    // AUTO-RESTORE HOUSES IF MISSING
-                    if (!d.houses || d.houses.length === 0) {
-                        console.warn("Houses missing. Seeding defaults...");
+                     
+                    // --- AGGRESSIVE DATA REPAIR ---
+                    const cleanResidents = (d.residents || []).map(r => ({
+                        ...r,
+                        active: (r.active === undefined || r.active === null) ? true : r.active, 
+                        org: r.org || 'YVR',
+                        houseId: r.houseId || '',
+                        feeWaived: !!r.feeWaived // Ensure boolean
+                    }));
+                    d.residents = cleanResidents;
+
+                    const count = cleanResidents.length;
+                    const activeCount = cleanResidents.filter(r => r.active).length;
+                    const houseCount = (d.houses || []).length;
+                    window.setStatus(`Connected: ${count} Residents (${activeCount} Active), ${houseCount} Houses`, 'ok');
+                     
+                    // 2. Fix Houses: Ensure houses have rooms array (prevents crash)
+                    d.houses = (d.houses || []).map(h => ({ ...h, rooms: h.rooms || [] }));
+
+                    // Auto-restore defaults if totally empty
+                    if (d.houses.length === 0) {
+                        console.warn("Houses missing. Restoring defaults...");
                         window.FB.setDoc(docRef, { houses: DEFAULT_HOUSES }, {merge:true});
-                        d.houses = DEFAULT_HOUSES;
+                        d.houses = DEFAULT_HOUSES; 
                     }
-                    if (!d.residents) d.residents = [];
-                    if (!d.users || d.users.length === 0) {
-                        window.FB.setDoc(docRef, { users: DEFAULT_USERS }, {merge:true});
-                        d.users = DEFAULT_USERS;
-                    }
-                    if(!d.payers || d.payers.length < PAYERS.length) d.payers = PAYERS;
+
+                    if (!d.intakeQueue) d.intakeQueue = [];
+                    if (!d.users) d.users = DEFAULT_USERS;
+                    if (!d.payments) d.payments = [];
+                    if (!d.payers) d.payers = PAYERS;
+                     
                     setData(d);
                 } else {
-                    console.log('Data: Document Not Found (Empty)');
+                    window.setStatus('Connected (0 Records)', 'ok');
                     setData({ houses: DEFAULT_HOUSES, residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: DEFAULT_USERS });
                     // Initialize doc
                     window.FB.setDoc(docRef, { houses: DEFAULT_HOUSES, residents: [], payments: [], intakeQueue: [], users: DEFAULT_USERS });
                 }
             }, (err) => { 
                 console.error("Firestore Error:", err); 
-                showToast("Access Error: " + err.message, "error"); 
+                window.setStatus('Database Error: ' + err.message, 'error');
             });
             return () => unsub();
         }, [fb.db, fb.uid, fb.appId]);
@@ -619,28 +722,58 @@
         };
 
         const handleSaveResident = async (rData) => {
-            let list = [...data.residents];
-            let finalMoveInMonth = rData.moveInMonth;
-            if (rData.moveInDate) { finalMoveInMonth = monthOf(rData.moveInDate); }
-            const pid = resolvePayerId(rData.payerOrgId);
-            const clean = { 
-                ...rData, moveInMonth: finalMoveInMonth, phoneNumber: cleanPhone(rData.phoneNumber), feePaidAmount: parseFloat(rData.feePaidAmount||0), age: parseInt(rData.age||0), feeAssistStatus: rData.feeAssistStatus, feeAssistContact: rData.feeAssistContact, needsRentalAssistance: rData.feeAssistStatus === 'needs', payerOrgId: pid
-            };
-            if(rData.futureDischargeDate) clean.futureDischargeDate = rData.futureDischargeDate;
-            if(rData.futureDischargeReason) clean.futureDischargeReason = rData.futureDischargeReason;
-            if(clean.id) { list = list.map(r => r.id === clean.id ? {...r, ...clean} : r); } 
-            else { list.push({ ...clean, id: uid('RES'), active: true }); }
-            
-            // NEW LOGIC: Check for intake ID and remove from queue if present (Safe Handover)
-            let queuePatch = {};
-            if (rData.fromIntakeId) {
-                const newQueue = data.intakeQueue.filter(i => i.id !== rData.fromIntakeId);
-                queuePatch = { intakeQueue: newQueue };
-                delete clean.fromIntakeId; // Don't save temp ID
-            }
+            try {
+                let list = JSON.parse(JSON.stringify(data.residents || []));
+                let finalMoveInMonth = rData.moveInMonth;
+                if (rData.moveInDate) { finalMoveInMonth = monthOf(rData.moveInDate); }
+                const pid = resolvePayerId(rData.payerOrgId);
+                const isFeeWaived = rData.feeWaived === true || rData.feeWaived === "true";
 
-            await updateStore({ residents: list, ...queuePatch });
-            setModal({type:null}); showToast('Client Saved');
+                // --- FIX 2: AGGRESSIVE CLEANUP FOR RESTORE ---
+                const clean = { 
+                    ...rData, 
+                    moveInMonth: finalMoveInMonth, 
+                    phoneNumber: cleanPhone(rData.phoneNumber), 
+                    feePaidAmount: parseFloat(rData.feePaidAmount||0), 
+                    age: parseInt(rData.age||0), 
+                    feeAssistStatus: rData.feeAssistStatus, 
+                    feeAssistContact: rData.feeAssistContact, 
+                    needsRentalAssistance: rData.feeAssistStatus === 'needs', 
+                    payerOrgId: pid,
+                    feeWaived: isFeeWaived,
+                    // Force Active & Clean Archive Fields
+                    active: true,
+                    moveOutDate: null,
+                    archiveReason: null,
+                    futureDischargeDate: rData.futureDischargeDate || null,
+                    futureDischargeReason: rData.futureDischargeReason || null
+                };
+                
+                if(clean.id) { 
+                    const idx = list.findIndex(r => r.id === clean.id);
+                    if(idx > -1) {
+                         list[idx] = clean;
+                    } else {
+                         list.push(clean);
+                    }
+                } 
+                else { 
+                    list.push({ ...clean, id: uid('RES'), active: true }); 
+                }
+                
+                let queuePatch = {};
+                if (rData.fromIntakeId && data.intakeQueue) {
+                    const newQueue = data.intakeQueue.filter(i => i.id !== rData.fromIntakeId);
+                    queuePatch = { intakeQueue: newQueue };
+                    delete clean.fromIntakeId;
+                }
+
+                await updateStore({ residents: list, ...queuePatch });
+                setModal({type:null}); showToast('Client Saved');
+            } catch (err) {
+                console.error("Save Failed:", err);
+                showToast("Error Saving: " + err.message, "error");
+            }
         };
 
         const handleArchiveResident = async (id, reason, date) => {
@@ -659,7 +792,7 @@
         };
         
         const handleSaveIntake = async (formData) => {
-            let newQueue = [...data.intakeQueue];
+            let newQueue = [...(data.intakeQueue || [])];
             if (formData.id) { newQueue = newQueue.map(item => item.id === formData.id ? formData : item); showToast('Intake Updated'); } 
             else { newQueue.push({ ...formData, id: uid('INT') }); showToast('Intake Added'); }
             await updateStore({ intakeQueue: newQueue });
@@ -684,14 +817,23 @@
             if(org==='YVR') { s.setProperty('--brand1',c.getPropertyValue('--yvr-c')); s.setProperty('--brand2',c.getPropertyValue('--yvr-a')); }
             else if(org==='TNH') { s.setProperty('--brand1',c.getPropertyValue('--tnh-c')); s.setProperty('--brand2',c.getPropertyValue('--tnh-b')); }
             else { s.setProperty('--brand1',c.getPropertyValue('--all-c')); s.setProperty('--brand2',c.getPropertyValue('--all-b')); }
+            // --- FIX: RESET HOUSE FILTER WHEN ORG CHANGES ---
+            setFilters(prev => ({...prev, house:'ALL'}));
         }, [org]);
 
         const visibleHouses = useMemo(() => (data.houses || []).filter(h => org === 'ALL' || h.org === org), [data.houses, org]);
+        
         const filteredResidents = useMemo(() => {
-            let list = (data.residents || []).filter(r => { // Safe access
+            let list = (data.residents || []).filter(r => { 
                 if(!r.active) return false;
-                if(org !== 'ALL' && r.org !== org) return false;
+                
+                // --- FIX: Resolve Org via House to prevent missing clients ---
+                const rHouse = (data.houses||[]).find(h => h.id === r.houseId);
+                const effectiveOrg = rHouse ? rHouse.org : r.org;
+                
+                if(org !== 'ALL' && effectiveOrg !== org) return false;
                 if(filters.house !== 'ALL' && r.houseId !== filters.house) return false;
+                
                 if(filters.search && !r.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
                 if(filters.ethnicity !== 'ALL' && r.ethnicity !== filters.ethnicity) return false;
                 if(filters.age !== 'ALL') {
@@ -719,11 +861,15 @@
                 }
                 return true;
             });
-            list.sort((a,b) => (a.houseId+a.roomId).localeCompare(b.houseId+b.roomId));
+            list.sort((a,b) => {
+                const ha = (a.houseId||'') + (a.roomId||'');
+                const hb = (b.houseId||'') + (b.roomId||'');
+                return ha.localeCompare(hb);
+            });
             return list;
-        }, [data.residents, data.payments, org, filters, month]);
+        }, [data.residents, data.payments, org, filters, month, data.houses]);
         
-        // Collect Unassigned Residents for Safety Net
+        // Safety Net for Unassigned Residents
         const unassignedResidents = useMemo(() => {
             const validHouseIds = (data.houses||[]).map(h=>h.id);
             return (data.residents||[]).filter(r => r.active && (!r.houseId || !validHouseIds.includes(r.houseId)));
@@ -747,8 +893,10 @@
             let totalCap = 0; let totalAct = 0; let totalRev = 0; let totalPaid = 0; let totalDue = 0; let totalVacancyLoss = 0;
             const vacancyList = [];
             scopeHouses.forEach(h => {
-                const hCap = h.rooms.reduce((s,r)=>s+(parseInt(r.beds)||0), 0);
-                // Safe filter
+                // SAFETY CHECK: Ensure rooms exists
+                const rooms = h.rooms || [];
+                const hCap = rooms.reduce((s,r)=>s+(parseInt(r.beds)||0), 0);
+                
                 const hAct = (data.residents || []).filter(r => r.active && r.houseId === h.id).length;
                 const hVac = Math.max(0, hCap - hAct);
                 if(hVac > 0) vacancyList.push({ name: h.name, count: hVac });
@@ -899,124 +1047,149 @@
                     </div>
                 )}
                  
+                {/* --- CLIENTS VIEW --- */}
                 {view === 'clients' && (
-                    <div className="grid">
-                        {visibleHouses.map(h => {
-                            const houseRes = filteredResidents.filter(r => r.houseId === h.id);
-                            if(filters.house !== 'ALL' && h.id !== filters.house) return null;
-                            if(houseRes.length === 0 && filters.search) return null;
-                            const totalBeds = h.rooms.reduce((s,r)=>s+(parseInt(r.beds)||0),0);
-                            const avail = totalBeds - data.residents.filter(r=>r.active && r.houseId === h.id).length;
+                    <div className="card">
+                         <div className="table-wrap">
+                             <table>
+                                 <thead>
+                                     <tr>
+                                         <th style={{minWidth:300}}>Client Details</th>
+                                         <th style={{width:120}}>Payer Org</th>
+                                         {visibleMonths.map(m=><th key={m} style={{width:100, textAlign:'center'}}>{fmtMon(m)}</th>)}
+                                         <th style={{width:80}}>Action</th>
+                                     </tr>
+                                 </thead>
+                                 {/* --- FIX: GROUP BY HOUSE --- */}
+                                 {/* 1. Grouped Houses */}
+                                {visibleHouses.map(house => {
+                                    // Find residents belonging to this house in the filtered list
+                                    const houseResidents = filteredResidents.filter(r => r.houseId === house.id);
+                                    if(houseResidents.length === 0) return null;
+                                    
+                                    // Sort by room/bed inside house
+                                    houseResidents.sort((a,b) => (a.roomId||'').localeCompare(b.roomId||'') || (a.bed||0)-(b.bed||0));
 
-                            return (
-                                <div className="card" key={h.id} style={{padding:0, overflow:'hidden'}}>
-                                    <div style={{padding:'12px 16px', background:'#f1f5f9', borderBottom:'1px solid var(--ring)', display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                                        <div style={{fontWeight:700, fontSize:15, color:'var(--brand1)'}}>{h.name} <span className="badge" style={{marginLeft:8,background:avail>0?'var(--green)':'var(--red)',color:'#fff',borderColor:'transparent'}}>{avail} Beds Open</span></div>
-                                        <button className="button" style={{height:24,fontSize:11}} onClick={()=>setModal({type:'EDIT_HOUSE', data:h, residents: data.residents})}>Edit House</button>
-                                    </div>
-                                    <div className="table-wrap" style={{border:'none', borderRadius:0}}>
-                                        <table>
-                                            <thead><tr><th style={{width:'40%'}}>Client / Case Info</th><th style={{width:'15%'}}>Payer</th>{visibleMonths.map(m=><th key={m} style={{textAlign:'center'}}>{fmtMon(m)}</th>)}<th style={{width:'10%'}}>Edit</th></tr></thead>
-                                            <tbody>
-                                                {houseRes.map(r => (<ClientRow key={r.id} r={r} h={h} meta={{selectedMonth:month, payments:data.payments, months:visibleMonths, payers:data.payers}} onPay={(r,m)=>setModal({type:'PAY', data:{r,m}})} onEdit={(r)=>setModal({type:'ADD_RES', data:r})} onView={(r)=>setModal({type:'PROFILE', data:r})} />))}
-                                                {houseRes.length === 0 && <tr><td colSpan={6} style={{textAlign:'center', padding:20, color:'var(--muted)'}}>No clients in this house matching filters.</td></tr>}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div style={{padding:8, borderTop:'1px solid var(--ring)', background:'#fafafa'}}><button className="button ghost" style={{color:'var(--brand1)', width:'100%', borderColor:'transparent'}} onClick={()=>setModal({type:'ADD_RES', data:{houseId:h.id, org:h.org}})}>+ Add Client to {h.name}</button></div>
-                                </div>
-                            )
-                        })}
-                        
-                        {/* SAFETY NET: UNASSIGNED RESIDENTS */}
-                        {unassignedResidents.length > 0 && (
-                            <div className="card" style={{border:'2px solid red'}}>
-                                <div style={{padding:'12px 16px', background:'#fee2e2', color:'red', fontWeight:700}}>⚠ Unassigned / Data Mismatch Residents (Please Edit & Assign House)</div>
-                                <div className="table-wrap">
-                                    <table>
-                                        <thead><tr><th>Client Name</th><th>Actions</th></tr></thead>
-                                        <tbody>
-                                            {unassignedResidents.map(r => (
-                                                <tr key={r.id}>
-                                                    <td>{r.name} <span style={{fontSize:10, color:'grey'}}> (HouseID: {r.houseId})</span></td>
-                                                    <td><button className="button primary" onClick={()=>setModal({type:'ADD_RES', data:r})}>Edit & Fix</button></td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-                
-                {view === 'intake' && (
-                    <div className="card" style={{minHeight: '50vh'}}>
-                        <div style={{fontSize:18, fontWeight:700, marginBottom:16}}>Intake Queue</div>
-                        {data.intakeQueue.length === 0 ? <div className="text-sm" style={{fontStyle:'italic', padding:40, textAlign:'center', color:'var(--muted)'}}>No intakes scheduled.</div> : 
-                            <div className="table-wrap">
-                                <table>
-                                    <thead><tr><th>Client</th><th>Schedule</th><th>Origin / Location</th><th>Logistics</th><th style={{textAlign:'right'}}>Actions</th></tr></thead>
-                                    <tbody>
-                                        {[...data.intakeQueue].sort((a,b) => (new Date(a.date || a.graduationDate || '9999-12-31') - new Date(b.date || b.graduationDate || '9999-12-31'))).map(i=>(
-                                            <tr key={i.id}>
-                                                <td><div style={{fontWeight:600}}>{i.name}</div><span className="badge" style={{backgroundColor: i.type==='DOC'?'#eff6ff':'#f3e8ff', color: i.type==='DOC'?'#1e40af':'#7e22ce', border:'none', marginTop:4}}>{i.type || 'TREATMENT'}</span>{i.notes && <div style={{fontSize:11, color:'var(--muted)', fontStyle:'italic', marginTop:4}}>{i.notes}</div>}</td>
-                                                <td><div style={{fontSize:13, fontWeight:600}}>{fmtDateDisplay(i.date || i.graduationDate)}</div><div style={{fontSize:11, color:'var(--muted)'}}>{i.type==='DOC'?'Arrival':'Graduation'} Date</div><div style={{marginTop:4, fontSize:12}}>{i.time ? fmtTime12(i.time) : 'Time TBD'}</div></td>
-                                                <td><div style={{fontWeight:600}}>{i.facility || i.treatmentCenter || 'Unknown'}</div>{i.address && <div style={{fontSize:11, color:'var(--muted)'}}>{i.address}</div>}</td>
-                                                <td>{i.type !== 'DOC' && i.driver && <div style={{fontSize:12}}><strong>Driver:</strong> {i.driver}</div>}<div style={{marginTop:4}}>{i.assignedHouseId ? <span style={{color:'var(--brand1)', fontSize:12, fontWeight:600}}>To: {data.houses.find(h=>h.id===i.assignedHouseId)?.name || i.assignedHouseId}</span> : <span style={{color:'var(--amber)', fontSize:11, fontWeight:600}}>No House Assigned</span>}</div></td>
-                                                <td style={{textAlign:'right'}}>
-                                                    <div style={{display:'flex', gap:6, justifyContent:'flex-end'}}>
-                                                        <button className="button primary" style={{height:24,fontSize:10}} onClick={()=>{ 
-                                                            const prefill = { name:i.name, treatmentCenter: i.facility || i.treatmentCenter, iopGraduationDate: i.date || i.graduationDate, houseId:i.assignedHouseId, notes: i.notes, fromIntakeId: i.id };
-                                                            setModal({type:'ADD_RES', data: prefill});
-                                                        }}>Check In</button>
-                                                        <button className="button ghost" style={{height:24,fontSize:10, color:'var(--brand1)', borderColor:'var(--ring)'}} onClick={()=>setModal({type:'INTAKE', data:i})}>Edit</button>
-                                                        <button className="button" style={{height:24,fontSize:10,color:'var(--red)', padding:'0 6px'}} onClick={()=>{ if (confirm('Delete from intake queue?')) updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)}); }}>X</button>
-                                                    </div>
-                                                    
-                                                    <div style={{display:'flex', gap:4, marginTop:8, justifyContent:'flex-end'}}>
-                                                        <button className="button" style={{fontSize:10, height:24, padding:'0 8px'}} onClick={()=>addToGoogleCalendar(i)}>📅 Google</button>
-                                                        <button className="button" style={{fontSize:10, height:24, padding:'0 8px'}} onClick={()=>downloadICS(i)}>🗓 Apple/Outlook</button>
-                                                    </div>
+                                    return (
+                                        <tbody key={house.id} style={{borderTop:'2px solid var(--ring)'}}>
+                                            <tr style={{background:'#e2e8f0'}}>
+                                                <td colSpan={10} style={{fontWeight:700, fontSize:14, padding:'8px 12px', color:'var(--brand1)'}}>
+                                                    {house.name} <span style={{fontWeight:400, fontSize:12, color:'var(--muted)'}}>({house.org})</span>
                                                 </td>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
+                                            {houseResidents.map(r => (
+                                                <ClientRow key={r.id} r={r} h={house} meta={{selectedMonth:month, months:visibleMonths, payments:data.payments}} onEdit={(c)=>setModal({type:'ADD_RES', data:c})} onPay={(c, m)=>setModal({type:'PAY', data:{c, m}})} />
+                                            ))}
+                                        </tbody>
+                                    )
+                                })}
+                                {/* 2. Unassigned Group */}
+                                {(() => {
+                                    // Find residents in filtered list that do NOT belong to a visible house
+                                    const visibleHouseIds = visibleHouses.map(h=>h.id);
+                                    const unassigned = filteredResidents.filter(r => !r.houseId || !visibleHouseIds.includes(r.houseId));
+                                    
+                                    if(unassigned.length === 0) return null;
+                                    return (
+                                        <tbody style={{borderTop:'2px solid var(--ring)'}}>
+                                            <tr style={{background:'#fee2e2'}}>
+                                                <td colSpan={10} style={{fontWeight:700, fontSize:14, padding:'8px 12px', color:'#991b1b'}}>
+                                                    Unassigned / Unknown House
+                                                </td>
+                                            </tr>
+                                            {unassigned.map(r => <ClientRow key={r.id} r={r} h={null} meta={{selectedMonth:month, months:visibleMonths, payments:data.payments}} onEdit={(c)=>setModal({type:'ADD_RES', data:c})} onPay={(c, m)=>setModal({type:'PAY', data:{c, m}})} />)}
+                                        </tbody>
+                                    )
+                                })()}
+                                
+                                {filteredResidents.length === 0 && (
+                                     <tbody><tr><td colSpan={10} style={{textAlign:'center', padding:40, color:'var(--muted)'}}>No clients found matching filters.</td></tr></tbody>
+                                )}
+                             </table>
+                         </div>
                     </div>
                 )}
-                 
-                {/* MODALS */}
-                {modal.type === 'PAY' && <PayModal resident={modal.data.r} month={modal.data.m} payments={data.payments} payers={data.payers} onClose={()=>setModal({type:null})} onSave={handleSavePayment} />}
-                {modal.type === 'ADD_RES' && <ResidentModal initial={modal.data} houses={data.houses} payers={data.payers} uniqueOrgs={uniqueOrgs} onClose={()=>setModal({type:null})} onSave={handleSaveResident} onArchive={handleArchiveResident} />}
-                {modal.type === 'INTAKE' && <IntakeModal initial={modal.data} houses={data.houses} intakeQueue={data.intakeQueue} onClose={()=>setModal({type:null})} onSave={handleSaveIntake} />}
-                {modal.type === 'EDIT_HOUSE' && <EditHouseModal house={modal.data} residents={data.residents} onClose={()=>setModal({type:null})} onDelete={handleDeleteHouse} onSave={(updatedH)=>{ const newHouses = data.houses.map(h=>h.id===updatedH.id ? updatedH : h); updateStore({houses: newHouses}); setModal({type:null}); }}/>}
-                {modal.type === 'ADD_HOUSE' && <AddHouseModal onClose={()=>setModal({type:null})} onSave={handleCreateHouse} uniqueOrgs={uniqueOrgs} />}
-                {modal.type === 'TEAM' && <ManageTeamModal users={data.users} onClose={()=>setModal({type:null})} onSave={(newTeam)=>{ updateStore({users: newTeam}); setModal({type:null}); showToast('Team Updated'); }} />}
-                {modal.type === 'CHANGE_PIN' && <ChangePinModal user={currentUser} onClose={()=>setModal({type:null})} onSave={handleUpdatePin} />}
-                
-                {modal.type === 'ARCHIVE' && (
-                    <Modal title="Archived Clients" large onClose={()=>setModal({type:null})}>
-                        <table>
-                            <thead><tr><th>Name</th><th>Move Out</th><th>Reason</th><th>Action</th></tr></thead>
-                            <tbody>
-                                {data.residents.filter(r=>!r.active).map(r=>(
-                                    <tr key={r.id}>
-                                        <td style={{fontWeight:600}}>{r.name}</td><td>{r.moveOutDate}</td><td>{r.archiveReason}</td>
-                                        <td>
-                                            <div style={{display:'flex', gap:8}}>
-                                                <button className="button ghost" style={{height:28, fontSize:11, color:'var(--brand1)'}} onClick={()=>setModal({type:'ADD_RES', data:r})}>Edit</button>
-                                                <button className="button primary" style={{height:28, fontSize:11}} onClick={()=>{ setModal({type:'ADD_RES', data: { ...r, active: true, moveOutDate: null, archiveReason: null, moveInDate: new Date().toISOString().slice(0,10) }}); }}>Re-Admit</button>
-                                                <button className="button" style={{height:28, fontSize:11, color:'red', borderColor:'transparent'}} onClick={()=>{ if (deleteConfirm === r.id) { updateStore({ residents: data.residents.filter(x=>x.id!==r.id) }); setDeleteConfirm(null); } else { setDeleteConfirm(r.id); setTimeout(() => setDeleteConfirm(null), 3000); } }}>{deleteConfirm === r.id ? "Confirm?" : "X"}</button>
-                                            </div>
-                                        </td>
+
+                {/* --- INTAKE QUEUE VIEW --- */}
+                {view === 'intake' && (
+                    <div className="card">
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                             <h3>Intake Queue</h3>
+                             <button className="button primary" onClick={()=>setModal({type:'INTAKE'})}>+ Add Intake</button>
+                        </div>
+                        <div className="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Name</th>
+                                        <th>From</th>
+                                        <th>Address</th>
+                                        <th>Assigned To</th>
+                                        <th>Notes</th>
+                                        <th>Action</th>
                                     </tr>
-                                ))}
-                                {data.residents.filter(r=>!r.active).length === 0 && <tr><td colSpan={4} style={{textAlign:'center', padding:20}}>No archived clients.</td></tr>}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {data.intakeQueue.map(i => {
+                                        const house = data.houses.find(h=>h.id===i.assignedHouseId);
+                                        return (
+                                            <tr key={i.id} onClick={()=>setModal({type:'INTAKE', data:i})} style={{cursor:'pointer'}}>
+                                                <td>{fmtDateDisplay(i.date || i.graduationDate)}<br/><span className="text-sm">{fmtTime12(i.time)}</span></td>
+                                                <td><strong>{i.name}</strong><br/><span className="badge">{i.type}</span></td>
+                                                <td>{i.facility || i.treatmentCenter}</td>
+                                                <td>{i.address || ""}</td>
+                                                <td>{house ? house.name : <span style={{color:'orange'}}>Unassigned</span>}</td>
+                                                <td style={{maxWidth:200, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{i.notes}</td>
+                                                <td>
+                                                    <button className="button primary" style={{fontSize:11, height:24, padding:'0 8px'}} onClick={(e)=>{ e.stopPropagation(); setModal({type:'ADD_RES', data:{name:i.name, moveInDate:i.date||i.graduationDate, houseId:i.assignedHouseId, fromIntakeId:i.id}}); }}>Promote to Client</button>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                    {data.intakeQueue.length === 0 && <tr><td colSpan={6} style={{textAlign:'center', padding:20}}>No pending intakes.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+                
+                {/* --- FIX: Pass ALL houses to modal, not just visibleHouses --- */}
+                {modal.type === 'ADD_RES' && ( 
+                    <ResidentModal 
+                        key={modal.data ? modal.data.id : 'new'} 
+                        initial={modal.data} 
+                        houses={data.houses} 
+                        payers={data.payers} 
+                        uniqueOrgs={uniqueOrgs} 
+                        onClose={()=>setModal({type:null})} 
+                        onSave={handleSaveResident} 
+                        onArchive={handleArchiveResident} 
+                    /> 
+                )}
+                
+                {modal.type === 'PAY' && ( <PayModal resident={modal.data.c} month={modal.data.m} payments={data.payments} payers={data.payers} onClose={()=>setModal({type:null})} onSave={handleSavePayment} /> )}
+                {modal.type === 'INTAKE' && ( <IntakeModal initial={modal.data} houses={visibleHouses} intakeQueue={data.intakeQueue} onClose={()=>setModal({type:null})} onSave={handleSaveIntake} /> )}
+                {modal.type === 'ADD_HOUSE' && ( <AddHouseModal onClose={()=>setModal({type:null})} onSave={handleCreateHouse} uniqueOrgs={uniqueOrgs} /> )}
+                {modal.type === 'CHANGE_PIN' && ( <ChangePinModal user={currentUser} onClose={()=>setModal({type:null})} onSave={handleUpdatePin} /> )}
+                {modal.type === 'TEAM' && ( <ManageTeamModal users={data.users} onClose={()=>setModal({type:null})} onSave={async (team)=>{ await updateStore({users:team}); setModal({type:null}); showToast('Team Updated'); }} /> )}
+                {modal.type === 'ARCHIVE' && (
+                    <Modal title="Archived Clients" onClose={()=>setModal({type:null})} large>
+                        <div className="table-wrap">
+                            <table>
+                                <thead><tr><th>Name</th><th>Discharged</th><th>Reason</th><th>Re-Activate</th></tr></thead>
+                                <tbody>
+                                    {data.residents.filter(r=>!r.active).map(r=>(
+                                        <tr key={r.id}>
+                                            <td>{r.name}</td>
+                                            <td>{fmtDateDisplay(r.moveOutDate || r.futureDischargeDate)}</td>
+                                            <td>{r.archiveReason || r.futureDischargeReason}</td>
+                                            <td><button className="button" style={{fontSize:11, height:24}} onClick={()=>{setModal({type:'ADD_RES', data:r})}}>Edit / Restore</button></td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </Modal>
                 )}
                 
