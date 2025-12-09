@@ -10,7 +10,7 @@
   <style>
     :root { --yvr-c: #2D4F6C; --yvr-b: #6B8E42; --yvr-a: #8BB9C8; --tnh-c: #2563eb; --tnh-b: #8B8000; --tnh-a: #0ea5e9; --all-c: #228B22; --all-b: #9370DB; --all-a: #8B8000; --brand1: var(--yvr-c); --brand2: var(--yvr-a); --brand3: var(--yvr-b); --bg: #f7f7fb; --txt: #0f172a; --muted: #64748b; --card: #fff; --ring: #dbe2ea; --green: #22c55e; --red: #ef4444; --amber: #f59e0b; --load-bg: #e2e8f0; --fee-bg: #fee2e2; --fee-txt: #991b1b; }
     * { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--txt); font: 14px/1.5 Inter, system-ui, -apple-system, sans-serif; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 16px; } 
+    .container { max-width: 1400px; margin: 0 auto; padding: 16px; margin-top: 40px; } 
     .header { color: #fff; border-radius: 24px; padding: 24px 20px; position: relative; overflow: hidden; background: linear-gradient(100deg, var(--brand1), var(--brand2), var(--brand3)); box-shadow: 0 6px 24px rgba(2, 6, 23, .15); }
     .header-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; position: relative; z-index: 2; }
     .brand { display: flex; align-items: center; gap: 12px; }
@@ -65,8 +65,10 @@
     .auto-toast.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .auto-toast.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
     @keyframes fade { 0% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, 20px); } }
-    
-    #error-box { display:none; position:fixed; top:0; left:0; width:100%; background:#fee2e2; color:#b91c1c; padding:20px; z-index:9998; border-bottom:2px solid #ef4444; text-align:center; font-weight:bold; }
+     
+    #status-bar { position:fixed; top:0; left:0; width:100%; height:32px; background:#1e293b; color:#fff; display:flex; align-items:center; justify-content:space-between; padding:0 16px; font-size:11px; z-index:10000; }
+    .status-ok { color: #4ade80; }
+    .status-err { color: #f87171; }
   </style>
 
   <script type="module">
@@ -80,10 +82,24 @@
   <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
+  <div id="status-bar">
+    <span id="status-text">Initializing...</span>
+    <span id="db-info">DB: tnh-yvr-client-track</span>
+  </div>
   <div id="error-box"></div>
   <div id="root"></div>
 
   <script type="text/babel" data-presets="env,react">
+    /* --- HELPERS MOVED TO TOP LEVEL TO FIX SCOPE ERROR --- */
+    window.setStatus = (msg, type) => {
+        const el = document.getElementById('status-text');
+        if(el) {
+            el.innerText = msg;
+            el.className = type === 'error' ? 'status-err' : 'status-ok';
+        }
+    };
+
+    /* --- ERROR HANDLING --- */
     window.onerror = function(msg, url, line, col, error) {
         const box = document.getElementById('error-box');
         if(box) {
@@ -94,6 +110,7 @@
         return false;
     };
 
+    /* --- CONSTANTS & CONFIG --- */
     const FB_CONFIG = { apiKey: "AIzaSyBWFzHTy4lgLNL1xbLuOK3B3hsZPCzxIhI", authDomain: "tnh-yvr-client-track.firebaseapp.com", projectId: "tnh-yvr-client-track", storageBucket: "tnh-yvr-client-track.firebasestorage.app", messagingSenderId: "566937672669", appId: "1:566937672669:web:6add7a9f2359510c303434", measurementId: "G-0QPSTX0SD8" };
     const LOGOS = { YVR: 'https://i.imgur.com/MNRYfAD.jpeg', TNH: 'https://i.imgur.com/tRlh6tm.jpeg', ALL: 'https://i.imgur.com/JtO5T2E.jpeg' };
     const ARTIFACT_ID = 'tnh-yvr-client-track'; 
@@ -120,16 +137,6 @@
         {id: 'receiving', label: 'Receiving Assistance', color: '#16a34a', bg: '#dcfce7'},
         {id: 'not_needed', label: 'Not Needed', color: '#475569', bg: '#f1f5f9'}
     ];
-    
-    const DSHS_OPTS = [
-        {id:'needs_apply', l:'Needs ABD/HEN', c:'#dc2626', b:'#fee2e2'},
-        {id:'enrolled', l:'Has ABD/HEN', c:'#16a34a', b:'#dcfce7'},
-        {id:'psych_eval', l:'Waiting for Psych Eval', c:'#d97706', b:'#fef3c7'},
-        {id:'pending', l:'Pending (Other)', c:'#64748b', b:'#f1f5f9'},
-        {id:'na', l:'N/A', c:'#94a3b8', b:'#f8fafc'}
-    ];
-
-    const RENT_ASSIST_AGENCIES = ['NCAC', 'YNHC', 'Washington Monitoring', 'Entrust', 'Consistent Care'];
      
     const PAYER_STYLES = {
         'self': { bg: '#f0fdf4', txt: '#166534', b: '#bbf7d0' }, 'dshs': { bg: '#ecfccb', txt: '#3f6212', b: '#d9f99d' }, 'doc': { bg: '#eff6ff', txt: '#1e40af', b: '#bfdbfe' },
@@ -138,7 +145,14 @@
         'family': { bg: '#fdf2f8', txt: '#be185d', b: '#fbcfe8' }, 'vhc': { bg: '#ecfeff', txt: '#0e7490', b: '#a5f3fc' }, 'barth': { bg: '#fef2f2', txt: '#b91c1c', b: '#fecaca' },
         'merit': { bg: '#fff7ed', txt: '#c2410c', b: '#fdba74' }, 'ttc': { bg: '#eff6ff', txt: '#1d4ed8', b: '#93c5fd' }, 'default': { bg: '#f3f4f6', txt: '#374151', b: '#d1d5db' }
     };
-
+     
+    const DSHS_OPTS = [
+        {id:'enrolled',l:'Enrolled (Receiving ABD/HEN)',c:'#166534',b:'#dcfce7'}, {id:'needs_apply',l:'Needs to Apply (Go to DSHS)',c:'#991b1b',b:'#fee2e2'},
+        {id:'submitted',l:'Application Submitted (Waiting)',c:'#b45309',b:'#fef3c7'}, {id:'pending_interview',l:'Pending Interview',c:'#b45309',b:'#fef3c7'},
+        {id:'pending_med',l:'Pending Medical Review',c:'#b45309',b:'#fef3c7'}, {id:'self_pay',l:'Not Needed (Self-Pay/Job)',c:'#475569',b:'#f1f5f9'},
+        {id:'refused',l:'Not Needed (Refused/Opt-out)',c:'#475569',b:'#f1f5f9'}, {id:'ineligible',l:'Ineligible',c:'#475569',b:'#f1f5f9'}, {id:'na',l:'N/A (Unknown)',c:'#64748b',b:'#f8fafc'}
+    ];
+     
     const IOP_OPTS = [
         {id:'needs_intake',l:'Needs Intake/Assessment',c:'#991b1b',b:'#fee2e2'}, {id:'active_iop',l:'Active IOP',c:'#b45309',b:'#fef3c7'},
         {id:'active_op',l:'Active OP',c:'#b45309',b:'#fef3c7'}, {id:'aftercare',l:'Enrolled in Aftercare',c:'#166534',b:'#dcfce7'},
@@ -151,11 +165,13 @@
         {id:'vhc',name:'VHC'}, {id:'barth',name:'Barth'}, {id:'merit',name:'Merit'}, {id:'ttc',name:'TTC'}
     ];
 
+    // --- DEFAULT HOUSES SEED ---
     const DEFAULT_HOUSES = [
         {id:'H_YVR1', name:'YVR Main', org:'YVR', rooms:[{id:'R_1', name:'Room 1', beds:2}, {id:'R_2', name:'Room 2', beds:2}]},
         {id:'H_TNH1', name:'TNH House', org:'TNH', rooms:[{id:'R_3', name:'Top Level', beds:4}, {id:'R_4', name:'Bottom Level', beds:4}]}
     ];
 
+    /* --- UTILS --- */
     window.UTILS = {
         uid: (p='id') => `${p}_${Math.random().toString(36).slice(2,9)}`,
         fmtCur: (n) => (n||0).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}),
@@ -166,51 +182,56 @@
         cleanPhone: (p) => (''+p).replace(/\D/g,''),
         fmtPhone: (p) => { const c=(''+p).replace(/\D/g,''); if(c.length===10) return `(${c.slice(0,3)}) ${c.slice(3,6)}-${c.slice(6)}`; return p||''; },
         monthOf: (d) => d ? d.slice(0,7) : '',
-        resolvePayerId: (val) => { if(!val) return 'self'; const lower = val.toLowerCase(); if(PAYERS.find(p => p.id === val)) return val; if(lower.includes('northwest') || lower.includes('ncac')) return 'ncac'; if(lower.includes('yakima') || lower.includes('ynhc')) return 'ynhc'; if(lower.includes('valley') || lower.includes('vhc')) return 'vhc'; if(lower.includes('triumph') || lower.includes('ttc')) return 'ttc'; if(lower.includes('barth')) return 'barth'; if(lower.includes('merit')) return 'merit'; if(lower.includes('consistent')) return 'consistent'; if(lower.includes('monitoring') || lower.includes('wa monitor')) return 'wa_monitor'; if(lower.includes('entrust')) return 'entrust'; if(lower.includes('tribal')) return 'tribal'; if(lower.includes('family')) return 'family'; if(lower.includes('doc')) return 'doc'; if(lower.includes('dshs')) return 'dshs'; return 'dshs'; },
+        resolvePayerId: (val) => { if(!val) return 'self'; const lower = val.toLowerCase(); if(PAYERS.find(p => p.id === val)) return val; if(lower.includes('northwest') || lower.includes('ncac')) return 'ncac'; if(lower.includes('yakima') || lower.includes('ynhc')) return 'ynhc'; if(lower.includes('valley') || lower.includes('vhc')) return 'vhc'; if(lower.includes('triumph') || lower.includes('ttc')) return 'ttc'; if(lower.includes('barth')) return 'barth'; if(lower.includes('merit')) return 'merit'; if(lower.includes('consistent')) return 'consistent'; if(lower.includes('monitoring') || lower.includes('wa monitor')) return 'wa_monitor'; if(lower.includes('entrust')) return 'entrust'; if(lower.includes('tribal')) return 'tribal'; if(lower.includes('family')) return 'family'; if(lower.includes('doc')) return 'doc'; if(lower.includes('dshs')) return 'dshs'; return 'other'; },
         getFeeDueBase: (r, m) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); if(!r) return 0; if(r.name?.toLowerCase().includes('joey brooks')) { const dt = new Date(m + '-01'); if(dt >= new Date('2025-10-01') && dt <= new Date('2026-03-31')) return 500; } return pid === 'doc' ? FEE_CONST.DOC : FEE_CONST.BASE; },
         getMoveInFeeDue: (r) => { const pid = window.UTILS.resolvePayerId(r.payerOrgId); return (pid==='doc' || r.feeWaived) ? 0 : Math.max(0, FEE_CONST.FEE - (r.feePaidAmount||0)); },
         getFeeAssistStatus: (r) => { if (r.feeAssistStatus) return FEE_ASSIST_OPTS.find(o => o.id === r.feeAssistStatus) || FEE_ASSIST_OPTS[0]; if (r.needsRentalAssistance === true) return FEE_ASSIST_OPTS.find(o => o.id === 'needs'); return FEE_ASSIST_OPTS.find(o => o.id === 'none'); },
-        getTxLabel: (type, facility) => {
-            if (type === 'DOC') return 'DOC';
-            const f = facility || '';
-            if (f.includes('JOTC') || f.includes('Oldham')) return 'JOTC';
-            if (f.includes('Sundown')) return 'Sundown';
-            if (f.includes('ABHS')) return 'ABHS';
-            if (f.includes('Barth')) return 'Barth';
-            if (f.includes('Valley')) return 'Valley';
-            if (f.includes('Triumph')) return 'Triumph';
-            if (f.includes('Merit')) return 'Merit';
-            if (f.includes('Tribal')) return 'Tribal';
-            return 'Inpatient';
-        },
+         
+        // --- CALENDAR HELPERS ---
         addToGoogleCalendar: (i) => {
             if(!i.date) return alert('Date is required');
             const startTime = i.time || '12:00';
             const d = new Date(i.date + 'T' + startTime);
-            const endD = new Date(d.getTime() + 60*60*1000); 
+            const endD = new Date(d.getTime() + 60*60*1000); // 1 hour duration
+
             const fmt = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "");
+             
             const url = new URL('https://calendar.google.com/calendar/render');
             url.searchParams.append('action', 'TEMPLATE');
             url.searchParams.append('text', `Pickup: ${i.name}`);
             url.searchParams.append('dates', `${fmt(d)}/${fmt(endD)}`);
             url.searchParams.append('details', `Pickup from ${i.facility || 'Unknown location'}.\nNotes: ${i.notes || ''}\nDriver: ${i.driver || 'TBD'}`);
             url.searchParams.append('location', i.address || i.facility || '');
+             
             window.open(url.toString(), '_blank');
         },
+
         downloadICS: (i) => {
             if(!i.date) return alert('Date is required');
             const startTime = i.time || '12:00';
             const d = new Date(i.date + 'T' + startTime);
             const endD = new Date(d.getTime() + 60*60*1000); 
+
             const fmt = (date) => date.toISOString().replace(/-|:|\.\d\d\d/g, "").split('Z')[0] + 'Z'; 
+
             const icsContent = [
-                'BEGIN:VCALENDAR', 'VERSION:2.0', 'BEGIN:VEVENT',
-                `SUMMARY:Pickup: ${i.name}`, `DTSTART:${fmt(d)}`, `DTEND:${fmt(endD)}`,
+                'BEGIN:VCALENDAR',
+                'VERSION:2.0',
+                'BEGIN:VEVENT',
+                `SUMMARY:Pickup: ${i.name}`,
+                `DTSTART:${fmt(d)}`,
+                `DTEND:${fmt(endD)}`,
                 `DESCRIPTION:Pickup from ${i.facility || 'Unknown'}. Notes: ${i.notes || ''}`,
                 `LOCATION:${i.address || i.facility || ''}`,
-                'BEGIN:VALARM', 'TRIGGER:-PT60M', 'ACTION:DISPLAY', 'DESCRIPTION:Pickup Reminder', 'END:VALARM',
-                'END:VEVENT', 'END:VCALENDAR'
+                'BEGIN:VALARM',
+                'TRIGGER:-PT60M',
+                'ACTION:DISPLAY',
+                'DESCRIPTION:Pickup Reminder',
+                'END:VALARM',
+                'END:VEVENT',
+                'END:VCALENDAR'
             ].join('\r\n');
+
             const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
             const link = document.createElement('a');
             link.href = window.URL.createObjectURL(blob);
@@ -222,7 +243,7 @@
     };
 
     const { useState, useMemo, useEffect, useRef, Fragment } = React;
-    const { uid, fmtCur, fmtMon, fmtDateDisplay, fmtTime12, getTodayISO, cleanPhone, fmtPhone, monthOf, resolvePayerId, getFeeDueBase, getMoveInFeeDue, getFeeAssistStatus, addToGoogleCalendar, downloadICS, getTxLabel } = window.UTILS;
+    const { uid, fmtCur, fmtMon, fmtDateDisplay, fmtTime12, getTodayISO, cleanPhone, fmtPhone, monthOf, resolvePayerId, getFeeDueBase, getMoveInFeeDue, getFeeAssistStatus, addToGoogleCalendar, downloadICS } = window.UTILS;
 
     const Modal = ({ title, children, onClose, large }) => ( <div className="modal-backdrop" onClick={onClose}> <div className={`modal ${large?'large':''}`} onClick={e=>e.stopPropagation()}> <button className="close-x" onClick={onClose}>&times;</button> <div style={{fontWeight:700,fontSize:18,marginBottom:20, borderBottom:'1px solid var(--ring)', paddingBottom:12}}>{title}</div> {children} </div> </div> );
     const Donut = ({ paid, unpaid }) => { const total = paid + unpaid; if(total <= 0) return null; const pPct = (paid/total) * 100; const dash = (pPct * 251.2) / 100; return ( <div style={{position:'relative', width:140, height:140, margin:'0 auto'}}> <svg viewBox="0 0 100 100" style={{transform:'rotate(-90deg)'}}> <circle cx="50" cy="50" r="40" fill="transparent" stroke="#ef4444" strokeWidth="12" /> <circle cx="50" cy="50" r="40" fill="transparent" stroke="#22c55e" strokeWidth="12" strokeDasharray={`${dash} 251.2`} /> </svg> <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}> <div style={{fontSize:11,color:'#64748b'}}>Collected</div> <div style={{fontSize:16,fontWeight:700}}>{Math.round(pPct)}%</div> </div> </div> ); };
@@ -242,26 +263,23 @@
         const payerObj = PAYERS.find(p => p.id === pid);
         const payerName = payerObj ? payerObj.name : (r.payerOrgId || 'Self Pay');
         const pStyle = PAYER_STYLES[pid] || PAYER_STYLES['default'];
-        
+        const faStatus = getFeeAssistStatus(r);
+
         return (
             <tr>
                 <td style={{verticalAlign:'top'}}>
                     <div style={{display:'flex', gap:12}}>
                         <div style={{paddingTop:6}}><div className={`status-dot ${status}`} /></div>
                         <div style={{flex:1}}>
-                            <div className="flex-center" style={{cursor:'pointer'}} onClick={()=>onEdit(r)}>
-                                <span style={{fontWeight:700, fontSize:15, color:statusColor, textDecoration:'underline', textUnderlineOffset:'2px'}}>{r.name}</span>
+                            <div className="flex-center">
+                                <span style={{fontWeight:700, fontSize:15, color:statusColor}}>{r.name}</span>
                                 {getMoveInFeeDue(r) > 0 && <span className="fee-alert">Fee Due: ${getMoveInFeeDue(r)}</span>}
                                 {r.futureDischargeDate && <span className="badge" style={{backgroundColor:'#fff7ed', color:'#c2410c', border:'1px solid #fdba74', marginLeft:6}}>Leaving: {fmtDateDisplay(r.futureDischargeDate)}</span>}
                             </div>
                             <div style={{margin:'4px 0'}}>
-                                <span style={{fontSize:'11px', fontWeight:700, color:'var(--muted)', marginRight:4}}>Status:</span>
-                                <span className="badge" style={{color:dshs.c,background:dshs.b,borderColor:dshs.c+'40'}}>{dshs.l}{r.dshsProgram === 'psych_eval' && r.psychEvalDate && ` (${fmtDateDisplay(r.psychEvalDate)})`}</span>
-                                {r.rentalAssistNeeded && (
-                                    <span className="badge" style={{backgroundColor:'#f5f3ff', color:'#7c3aed', border:'1px solid #ddd6fe', marginLeft: 4}}>
-                                        Needs Rent: {r.rentalAssistAgency || 'Unassigned'} {r.rentalAssistDate && `(${fmtDateDisplay(r.rentalAssistDate)})`}
-                                    </span>
-                                )}
+                                <span style={{fontSize:'11px', fontWeight:700, color:'var(--muted)', marginRight:4}}>ABD/HEN Status:</span>
+                                <span className="badge" style={{color:dshs.c,background:dshs.b,borderColor:dshs.c+'40'}}>{dshs.l}</span>
+                                {faStatus.id !== 'none' && (<span className="badge" style={{backgroundColor:faStatus.bg, color:faStatus.color, border:`1px solid ${faStatus.color}40`, marginLeft: 4}}>{faStatus.label}{faStatus.id === 'contacted' && r.feeAssistContact && ` (${r.feeAssistContact})`}</span>)}
                             </div>
                             <div style={{fontSize:12, color:'var(--muted)', display:'grid', gridTemplateColumns:'auto auto', gap:'2px 12px', marginTop:6}}>
                                 <div><span className="text-bold">Room:</span> {h ? h.name : 'Unassigned'} {r.roomId && r.roomId.split('_')[1]}-{r.bed}</div>
@@ -303,25 +321,13 @@
              if (u && u.pin === pin) onLogin(u);
              else setError('Incorrect PIN');
         };
-        const handlePinChange = (e) => {
-            const val = e.target.value;
-            setPin(val);
-            const u = users.find(x => x.id === userId);
-            if (u && u.pin === val) onLogin(u);
-        };
         return (
             <div className="login-screen">
                 <div className="login-box">
                     <img className="login-logo" src={LOGOS.ALL} alt="Logo" />
                     <h2 style={{margin:'0 0 24px'}}>Program Fee Tracker</h2>
-                    <div style={{textAlign:'left', marginBottom:16}}>
-                        <label>Select User</label>
-                        <select className="select" style={{width:'100%', height:44, fontSize:16}} value={userId} onChange={e=>setUserId(e.target.value)}>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
-                    </div>
-                    <div style={{textAlign:'left', marginBottom:24}}>
-                        <label>Enter PIN</label>
-                        <input type="password" className="input" style={{width:'100%', height:44, fontSize:24, textAlign:'center', letterSpacing:4}} value={pin} onChange={handlePinChange} placeholder="••••" maxLength={6} autoFocus />
-                    </div>
+                    <div style={{textAlign:'left', marginBottom:16}}><label>Select User</label><select className="select" style={{width:'100%', height:44, fontSize:16}} value={userId} onChange={e=>setUserId(e.target.value)}>{users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}</select></div>
+                    <div style={{textAlign:'left', marginBottom:24}}><label>Enter PIN</label><input type="password" className="input" style={{width:'100%', height:44, fontSize:24, textAlign:'center', letterSpacing:4}} value={pin} onChange={e=>setPin(e.target.value)} placeholder="••••" maxLength={6} /></div>
                     {error && <div style={{color:'red', marginBottom:16, fontWeight:600}}>{error}</div>}
                     <button className="button primary" style={{width:'100%', height:48, fontSize:16}} onClick={handleLogin}>Log In</button>
                 </div>
@@ -355,15 +361,34 @@
     }
 
     const ResidentModal = ({ initial, houses, payers, uniqueOrgs, onClose, onSave, onArchive }) => {
+        // --- FIX: Logic to auto-fix missing houses on init ---
         let startHouseId = initial ? initial.houseId : houses[0]?.id;
         let startOrg = initial ? initial.org : houses[0]?.org;
         let startRoomId = initial ? initial.roomId : houses[0]?.rooms?.[0]?.id;
+        
+        // If the house ID doesn't exist in current list (deleted house), reset to first house
         const houseExists = houses.find(h => h.id === startHouseId);
-        if (!houseExists && houses.length > 0) { startHouseId = houses[0].id; startOrg = houses[0].org; startRoomId = houses[0].rooms?.[0]?.id; } 
-        else if (houseExists) { startOrg = houseExists.org; }
+        if (!houseExists && houses.length > 0) {
+             startHouseId = houses[0].id;
+             startOrg = houses[0].org;
+             startRoomId = houses[0].rooms?.[0]?.id;
+        } else if (houseExists) {
+             // Ensure Org matches House
+             startOrg = houseExists.org;
+        }
 
-        const def = { name:'', org:startOrg, houseId:startHouseId, roomId:startRoomId, bed:1, payerOrgId:'self', dshsProgram:'na', psychEvalDate:'', rentalAssistNeeded:false, rentalAssistAgency:'', rentalAssistDate:'', iopStatus:'na', feeWaived:false, moveInMonth: monthOf(getTodayISO()), phoneNumber:'', age:'', ethnicity:'Unknown', treatmentCenter:'', iopGraduationDate:'', moveInDate:'', feePaidAmount: 0, docNumber: '' };
-        const [f, setF] = useState({ ...def, ...initial, houseId: startHouseId, org: startOrg, roomId: startRoomId, payerOrgId: resolvePayerId(initial ? (initial.payerOrgId || 'self') : 'self') });
+        const def = { name:'', org:startOrg, houseId:startHouseId, roomId:startRoomId, bed:1, payerOrgId:'self', dshsProgram:'na', iopStatus:'na', feeWaived:false, moveInMonth: monthOf(getTodayISO()), phoneNumber:'', age:'', ethnicity:'Unknown', treatmentCenter:'', iopGraduationDate:'', moveInDate:'', needsRentalAssistance: false, feePaidAmount: 0, docNumber: '' };
+        
+        // --- FIX: NO EFFECT HERE - DIRECT INITIALIZATION ---
+        const [f, setF] = useState({ 
+            ...def, 
+            ...initial, 
+            houseId: startHouseId, 
+            org: startOrg,
+            roomId: startRoomId,
+            payerOrgId: resolvePayerId(initial ? (initial.payerOrgId || 'self') : 'self')
+        });
+
         const [isArchiving, setIsArchiving] = useState(false);
         const [archiveData, setArchiveData] = useState({ date: getTodayISO(), reason: '' });
         const [reminderData, setReminderData] = useState({ date: '', time: '', note: '' }); 
@@ -374,12 +399,19 @@
             const firstRoom = firstHouse?.rooms?.[0];
             setF({ ...f, org: newOrg, houseId: firstHouse?.id || '', roomId: firstRoom?.id || '' });
         };
+
         const handleHouseChange = (e) => {
             const newHouseId = e.target.value;
             const house = houses.find(h => h.id === newHouseId);
             const firstRoom = house?.rooms?.[0];
-            setF({ ...f, houseId: newHouseId, roomId: firstRoom?.id || '', org: house ? house.org : f.org });
+            setF({ 
+                ...f, 
+                houseId: newHouseId, 
+                roomId: firstRoom?.id || '',
+                org: house ? house.org : f.org 
+            });
         };
+
         const handleGoogleCalendar = () => {
             if(!reminderData.date || !reminderData.time) { alert("Please select a date and time."); return; }
             const start = new Date(`${reminderData.date}T${reminderData.time}`).toISOString().replace(/-|:|\.\d\d\d/g,"");
@@ -389,9 +421,10 @@
             window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&details=${details}`, '_blank');
         };
 
-        if(isArchiving) return ( <Modal title={`Archive: ${f.name}`} onClose={onClose}> <div style={{background:'#fef2f2', padding:16, borderRadius:8, border:'1px solid #fecaca', marginBottom:16}}> <div style={{color:'#991b1b', fontWeight:700, marginBottom:8}}>Confirm Discharge / Archive</div> <div className="input-group"><label>Discharge Date</label><input type="date" className="input" value={archiveData.date} onChange={e=>setArchiveData({...archiveData, date:e.target.value})} /></div> <div className="input-group"><label>Reason / Case Note</label><textarea className="input" style={{height:80, padding:8}} value={archiveData.reason} onChange={e=>setArchiveData({...archiveData, reason:e.target.value})} placeholder="Reason for leaving..." /></div> </div> <div style={{display:'flex', justifyContent:'flex-end', gap:8}}> <button className="button" onClick={()=>setIsArchiving(false)}>Cancel</button> <button className="button primary" style={{background:'#dc2626'}} onClick={()=>onArchive(f.id, archiveData.reason, archiveData.date)}>Confirm Archive</button> </div> </Modal> );
+        if(isArchiving) {
+             return ( <Modal title={`Archive: ${f.name}`} onClose={onClose}> <div style={{background:'#fef2f2', padding:16, borderRadius:8, border:'1px solid #fecaca', marginBottom:16}}> <div style={{color:'#991b1b', fontWeight:700, marginBottom:8}}>Confirm Discharge / Archive</div> <div className="input-group"><label>Discharge Date</label><input type="date" className="input" value={archiveData.date} onChange={e=>setArchiveData({...archiveData, date:e.target.value})} /></div> <div className="input-group"><label>Reason / Case Note</label><textarea className="input" style={{height:80, padding:8}} value={archiveData.reason} onChange={e=>setArchiveData({...archiveData, reason:e.target.value})} placeholder="Reason for leaving..." /></div> </div> <div style={{display:'flex', justifyContent:'flex-end', gap:8}}> <button className="button" onClick={()=>setIsArchiving(false)}>Cancel</button> <button className="button primary" style={{background:'#dc2626'}} onClick={()=>onArchive(f.id, archiveData.reason, archiveData.date)}>Confirm Archive</button> </div> </Modal> )
+        }
         const isArchived = initial && initial.active === false;
-        
         return (
             <Modal title={initial && initial.id ? (isArchived ? 'Edit Archived Client' : 'Edit Client') : 'Add Client'} onClose={onClose}>
                 {isArchived && (<div style={{marginBottom:16, padding:'12px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8}}><div style={{fontWeight:700, color:'#991b1b'}}>⚠ Client is ARCHIVED</div></div>)}
@@ -405,39 +438,7 @@
                         <div className="input-group"><label>Payer</label><select className="select" value={f.payerOrgId} onChange={e=>setF({...f,payerOrgId:e.target.value})}>{PAYERS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
                     </div>
                     <div style={{marginTop:8, borderTop:'1px dashed #e2e8f0', paddingTop:8}}>
-                        <div className="input-group">
-                            <label>ABD/HEN Status</label>
-                            <select className="select" value={f.dshsProgram || 'na'} onChange={e=>setF({...f, dshsProgram:e.target.value})}>
-                                {DSHS_OPTS.map(o => <option key={o.id} value={o.id}>{o.l}</option>)}
-                            </select>
-                        </div>
-                        {f.dshsProgram === 'psych_eval' && (
-                            <div className="input-group" style={{marginTop:8}}>
-                                <label style={{color:'#d97706'}}>Psych Eval Date</label>
-                                <input type="date" className="input" value={f.psychEvalDate || ''} onChange={e=>setF({...f, psychEvalDate:e.target.value})} />
-                            </div>
-                        )}
-                        <div style={{marginTop:12, paddingTop:12, borderTop:'1px solid #e2e8f0'}}>
-                            <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
-                                <input type="checkbox" checked={f.rentalAssistNeeded} onChange={e=>setF({...f, rentalAssistNeeded:e.target.checked})} id="ra_check" />
-                                <label htmlFor="ra_check" style={{margin:0, cursor:'pointer'}}>Needs Rental Assistance?</label>
-                            </div>
-                            {f.rentalAssistNeeded && (
-                                <div className="row" style={{background:'#f5f3ff', padding:8, borderRadius:8}}>
-                                    <div className="input-group" style={{marginBottom:0}}>
-                                        <label>Agency</label>
-                                        <select className="select" value={f.rentalAssistAgency || ''} onChange={e=>setF({...f, rentalAssistAgency:e.target.value})}>
-                                            <option value="">Select Agency...</option>
-                                            {RENT_ASSIST_AGENCIES.map(a=><option key={a} value={a}>{a}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="input-group" style={{marginBottom:0}}>
-                                        <label>Signup Date</label>
-                                        <input type="date" className="input" value={f.rentalAssistDate || ''} onChange={e=>setF({...f, rentalAssistDate:e.target.value})} />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
+                        <div className="input-group"><label>Fee Assistance Status</label><select className="select" value={f.feeAssistStatus || 'none'} onChange={e=>setF({...f, feeAssistStatus:e.target.value})}>{FEE_ASSIST_OPTS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}</select></div>
                     </div>
                 </div>
                 <div className="input-group"><label>Name</label><input className="input" value={f.name} onChange={e=>setF({...f,name:e.target.value})} /></div>
@@ -467,6 +468,7 @@
                         <button className="button" style={{width:'100%', background:'#fff', color:'#1e40af', border:'1px solid #1e40af'}} onClick={handleGoogleCalendar}>Add to Google Calendar 📅</button>
                     </div>
                 )}
+
                 <div style={{marginTop:24,display:'flex',justifyContent:'space-between'}}>
                     {initial && initial.id && !isArchived && <button className="button" style={{color:'red', borderColor:'var(--red)'}} onClick={()=>setIsArchiving(true)}>Archive Now</button>}
                     <div style={{flex:1}}></div>
@@ -477,61 +479,15 @@
     }
 
     const IntakeModal = ({ initial, houses, intakeQueue, onClose, onSave }) => {
-        const [f, setF] = useState(initial || { type: 'TREATMENT', name:'', docNumber: '', facility:'', date: '', time:'', assignedHouseId: '', address:'', driver:'', notes:'' });
+        const [f, setF] = useState(initial || { type: 'TREATMENT', name:'', facility:'', date: (initial?.date || initial?.graduationDate || ''), time:'', assignedHouseId: '', address:'', driver:'', notes:'' });
         const isDOC = f.type === 'DOC';
-
-        // --- FIX: Force Reset on Initial Data Change ---
-        useEffect(() => {
-             if (initial) {
-                 const loadedDate = initial.date || initial.graduationDate || '';
-                 let hId = initial.assignedHouseId;
-                 if (hId && houses.length > 0 && !houses.find(h => h.id === hId)) {
-                     hId = ''; 
-                 }
-                 setF({ ...initial, date: loadedDate, assignedHouseId: hId });
-             } else {
-                 setF({ type: 'TREATMENT', name:'', docNumber: '', facility:'', date: '', time:'', assignedHouseId: '', address:'', driver:'', notes:'' });
-             }
-        }, [initial]);
-
         return (
             <Modal title={initial ? "Edit Intake" : "Add Intake"} onClose={onClose}>
-                 <div style={{display:'flex', gap:8, marginBottom:20, padding:4, background:'#f1f5f9', borderRadius:12}}>
-                     <button 
-                        className="button" 
-                        style={{
-                            flex:1, 
-                            height:40, 
-                            fontWeight:700, 
-                            background: !isDOC ? 'white' : 'transparent', 
-                            color: !isDOC ? 'var(--brand1)' : 'var(--muted)',
-                            boxShadow: !isDOC ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
-                            border: !isDOC ? '1px solid var(--ring)' : 'none'
-                        }} 
-                        onClick={()=>setF({...f, type:'TREATMENT'})}
-                    >
-                        🏥 From Treatment
-                    </button>
-                     <button 
-                        className="button" 
-                        style={{
-                            flex:1, 
-                            height:40, 
-                            fontWeight:700, 
-                            background: isDOC ? 'white' : 'transparent', 
-                            color: isDOC ? '#1e40af' : 'var(--muted)', 
-                            boxShadow: isDOC ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
-                            border: isDOC ? '1px solid #bfdbfe' : 'none'
-                        }} 
-                        onClick={()=>setF({...f, type:'DOC'})}
-                    >
-                        👮 From DOC
-                    </button>
+                 <div style={{display:'flex', gap:8, marginBottom:16, borderBottom:'1px solid #eee', paddingBottom:16}}>
+                     <button className={`button ${!isDOC?'primary':'ghost'}`} style={{flex:1, color: !isDOC?'#fff':'var(--txt)'}} onClick={()=>setF({...f, type:'TREATMENT'})}>From Treatment</button>
+                     <button className={`button ${isDOC?'primary':'ghost'}`} style={{flex:1, color: isDOC?'#fff':'var(--txt)'}} onClick={()=>setF({...f, type:'DOC'})}>From DOC</button>
                  </div>
-                 <div className="row">
-                    <div className="input-group"><label>Name</label><input className="input" value={f.name} onChange={e=>setF({...f,name:e.target.value})} /></div>
-                    <div className="input-group"><label>DOC Number</label><input className="input" value={f.docNumber || ''} onChange={e=>setF({...f,docNumber:e.target.value})} placeholder="Optional" /></div>
-                 </div>
+                 <div className="input-group"><label>Name</label><input className="input" value={f.name} onChange={e=>setF({...f,name:e.target.value})} /></div>
                  <div className="row">
                      <div className="input-group"><label>{isDOC ? 'Origin Facility' : 'Treatment Center'}</label>
                         {isDOC ? (<input className="input" value={f.facility} onChange={e=>setF({...f,facility:e.target.value})} placeholder="e.g. Monroe" />) : (
@@ -544,26 +500,7 @@
                      <div className="input-group"><label>Assigned House</label><select className="select" value={f.assignedHouseId} onChange={e=>setF({...f,assignedHouseId:e.target.value})}><option value="">No House Assigned Yet</option>{houses.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}</select></div>
                      <div className="input-group"><label>{isDOC ? 'Arrival Window' : 'Pickup Time'}</label><input type="time" className="input" value={f.time} onChange={e=>setF({...f,time:e.target.value})} /></div>
                  </div>
-                 <div className="input-group">
-                     <label>Address / Destination</label>
-                     <input
-                         className="input"
-                         value={f.address || ''}
-                         onChange={e => setF({ ...f, address: e.target.value })}
-                         placeholder="Street, city, etc."
-                     />
-                 </div>
-                 {!isDOC && (
-                     <div className="input-group">
-                         <label>Driver</label>
-                         <input
-                             className="input"
-                             value={f.driver || ''}
-                             onChange={e => setF({ ...f, driver: e.target.value })}
-                             placeholder="Assigned driver (optional)"
-                         />
-                     </div>
-                 )}
+                 {!isDOC && (<div className="input-group"><label>Driver Name</label><input className="input" value={f.driver} onChange={e=>setF({...f,driver:e.target.value})} /></div>)}
                  <div className="input-group"><label>Notes / Justification</label><textarea className="input" style={{height:60, padding:8}} value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Reason for date, special instructions..." /></div>
                  
                  {/* CALENDAR BUTTONS */}
@@ -627,19 +564,10 @@
     // --- MAIN APP ---
     function App() {
         const [fb, setFb] = useState({ auth: null, db: null, uid: null, appId: null });
-        const [data, setData] = useState({ houses: [], residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: [], agencyStatus: {} });
+        const [data, setData] = useState({ houses: [], residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: [] });
         const [view, setView] = useState('dashboard');
         const [toast, setToast] = useState(null);
-        
-        // --- FIX: SESSION STORAGE INITIALIZATION ---
-        const [currentUser, setCurrentUser] = useState(() => {
-            try {
-                const saved = sessionStorage.getItem('pft_user');
-                return saved ? JSON.parse(saved) : null;
-            } catch(e) {
-                return null;
-            }
-        });
+        const [currentUser, setCurrentUser] = useState(null); 
 
         const [org, setOrg] = useState('ALL');
         const [month, setMonth] = useState(getTodayISO().slice(0, 7));
@@ -679,8 +607,8 @@
             const db = window.FB.getFirestore(app);
              
             window.FB.signInAnonymously(auth)
-            .then(() => { console.log('Connected'); })
-            .catch(e => { console.error("Anon Auth Failed", e); showToast('Auth Error: ' + e.message, 'error'); });
+            .then(() => { window.setStatus('Connected', 'ok'); })
+            .catch(e => { console.error("Anon Auth Failed", e); window.setStatus('Auth Error: ' + e.message, 'error'); });
 
             const appId = ARTIFACT_ID;
             const unsubAuth = window.FB.onAuthStateChanged(auth, u => setFb({auth, db, uid: u?.uid, appId}));
@@ -707,7 +635,7 @@
                     const count = cleanResidents.length;
                     const activeCount = cleanResidents.filter(r => r.active).length;
                     const houseCount = (d.houses || []).length;
-                    console.log(`Connected: ${count} Residents (${activeCount} Active), ${houseCount} Houses`);
+                    window.setStatus(`Connected: ${count} Residents (${activeCount} Active), ${houseCount} Houses`, 'ok');
                      
                     // 2. Fix Houses: Ensure houses have rooms array (prevents crash)
                     d.houses = (d.houses || []).map(h => ({ ...h, rooms: h.rooms || [] }));
@@ -723,18 +651,17 @@
                     if (!d.users) d.users = DEFAULT_USERS;
                     if (!d.payments) d.payments = [];
                     if (!d.payers) d.payers = PAYERS;
-                    if (!d.agencyStatus) d.agencyStatus = {}; // --- FIX: Ensure agencyStatus exists ---
                      
                     setData(d);
                 } else {
-                    console.log('Connected (0 Records)');
-                    setData({ houses: DEFAULT_HOUSES, residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: DEFAULT_USERS, agencyStatus: {} });
+                    window.setStatus('Connected (0 Records)', 'ok');
+                    setData({ houses: DEFAULT_HOUSES, residents: [], payments: [], payers: PAYERS, notes: [], intakeQueue: [], users: DEFAULT_USERS });
                     // Initialize doc
-                    window.FB.setDoc(docRef, { houses: DEFAULT_HOUSES, residents: [], payments: [], intakeQueue: [], users: DEFAULT_USERS, agencyStatus: {} });
+                    window.FB.setDoc(docRef, { houses: DEFAULT_HOUSES, residents: [], payments: [], intakeQueue: [], users: DEFAULT_USERS });
                 }
             }, (err) => { 
                 console.error("Firestore Error:", err); 
-                showToast('Database Error: ' + err.message, 'error');
+                window.setStatus('Database Error: ' + err.message, 'error');
             });
             return () => unsub();
         }, [fb.db, fb.uid, fb.appId]);
@@ -749,26 +676,10 @@
             } catch(e) { showToast('Save failed: ' + e.message, 'error'); return false; }
         };
         
-        // --- FIX: SESSION STORAGE LOGOUT ---
-        const handleLoginUser = (u) => {
-            sessionStorage.setItem('pft_user', JSON.stringify(u));
-            setCurrentUser(u);
-        };
-
-        const handleLogout = () => {
-            sessionStorage.removeItem('pft_user');
-            setCurrentUser(null);
-        };
-
         const handleUpdatePin = (newPin) => {
              const updatedUsers = data.users.map(u => u.id === currentUser.id ? { ...u, pin: newPin } : u);
              updateStore({ users: updatedUsers });
-             
-             // Update local session too
-             const updatedUser = { ...currentUser, pin: newPin };
-             sessionStorage.setItem('pft_user', JSON.stringify(updatedUser));
-             setCurrentUser(updatedUser);
-             
+             setCurrentUser(prev => ({ ...prev, pin: newPin }));
              setModal({ type: null });
              showToast("PIN Updated Successfully");
         };
@@ -808,22 +719,16 @@
                     age: parseInt(rData.age||0), 
                     feeAssistStatus: rData.feeAssistStatus, 
                     feeAssistContact: rData.feeAssistContact, 
-                    // --- FIX: Explicitly save checkbox state ---
-                    rentalAssistNeeded: rData.rentalAssistNeeded === true, 
-                    rentalAssistAgency: rData.rentalAssistAgency || '', 
-                    rentalAssistDate: rData.rentalAssistDate || '',
-                    // --- FIX: Explicitly save ABD/HEN status ---
-                    dshsProgram: rData.dshsProgram || 'na',
-                    psychEvalDate: rData.psychEvalDate || '',
-                    // --- End Fix ---
-                    payerOrgId: pid, 
-                    feeWaived: isFeeWaived, 
-                    active: true, 
-                    moveOutDate: null, 
-                    archiveReason: null, 
-                    futureDischargeDate: rData.futureDischargeDate || null, 
-                    futureDischargeReason: rData.futureDischargeReason || null 
-                }; 
+                    needsRentalAssistance: rData.feeAssistStatus === 'needs', 
+                    payerOrgId: pid,
+                    feeWaived: isFeeWaived,
+                    // Force Active & Clean Archive Fields
+                    active: true,
+                    moveOutDate: null,
+                    archiveReason: null,
+                    futureDischargeDate: rData.futureDischargeDate || null,
+                    futureDischargeReason: rData.futureDischargeReason || null
+                };
                 
                 if(clean.id) { 
                     const idx = list.findIndex(r => r.id === clean.id);
@@ -845,6 +750,12 @@
                 }
 
                 await updateStore({ residents: list, ...queuePatch });
+                // Optimistically update local state so edits show immediately
+                setData(prev => ({ 
+                    ...prev, 
+                    residents: list, 
+                    ...queuePatch 
+                }));
                 setModal({type:null}); showToast('Client Saved');
             } catch (err) {
                 console.error("Save Failed:", err);
@@ -886,24 +797,111 @@
             await updateStore({ houses: newHouses });
             setModal({type:null}); showToast('House Deleted');
         };
-        
-        // --- NEW: TOGGLE AGENCY FUNDING ---
-        const toggleAgencyStatus = async (agency) => {
-            const current = data.agencyStatus || {};
-            const newVal = !current[agency]; // Toggle
-            const nextStatus = { ...current, [agency]: newVal };
-            await updateStore({ agencyStatus: nextStatus });
-        };
 
-        useEffect(() => { const s = document.documentElement.style; const c = getComputedStyle(document.documentElement); if(org==='YVR') { s.setProperty('--brand1',c.getPropertyValue('--yvr-c')); s.setProperty('--brand2',c.getPropertyValue('--yvr-a')); } else if(org==='TNH') { s.setProperty('--brand1',c.getPropertyValue('--tnh-c')); s.setProperty('--brand2',c.getPropertyValue('--tnh-b')); } else { s.setProperty('--brand1',c.getPropertyValue('--all-c')); s.setProperty('--brand2',c.getPropertyValue('--all-b')); } setFilters(prev => ({...prev, house:'ALL'})); }, [org]);
+        useEffect(() => {
+            const s = document.documentElement.style;
+            const c = getComputedStyle(document.documentElement);
+            if(org==='YVR') { s.setProperty('--brand1',c.getPropertyValue('--yvr-c')); s.setProperty('--brand2',c.getPropertyValue('--yvr-a')); }
+            else if(org==='TNH') { s.setProperty('--brand1',c.getPropertyValue('--tnh-c')); s.setProperty('--brand2',c.getPropertyValue('--tnh-b')); }
+            else { s.setProperty('--brand1',c.getPropertyValue('--all-c')); s.setProperty('--brand2',c.getPropertyValue('--all-b')); }
+            // --- FIX: RESET HOUSE FILTER WHEN ORG CHANGES ---
+            setFilters(prev => ({...prev, house:'ALL'}));
+        }, [org]);
+
         const visibleHouses = useMemo(() => (data.houses || []).filter(h => org === 'ALL' || h.org === org), [data.houses, org]);
-        const filteredResidents = useMemo(() => { let list = (data.residents || []).filter(r => { if(!r.active) return false; const rHouse = (data.houses||[]).find(h => h.id === r.houseId); const effectiveOrg = rHouse ? rHouse.org : r.org; if(org !== 'ALL' && effectiveOrg !== org) return false; if(filters.house !== 'ALL' && r.houseId !== filters.house) return false; if(filters.search && !r.name.toLowerCase().includes(filters.search.toLowerCase())) return false; if(filters.ethnicity !== 'ALL' && r.ethnicity !== filters.ethnicity) return false; if(filters.age !== 'ALL') { const a = parseInt(r.age || 0); if(filters.age === 'Unknown') { if (a !== 0) return false; } else if (filters.age === '56+') { if (a < 56) return false; } else { const [min, max] = filters.age.split('-').map(Number); if(a < min || a > max) return false; } } if (filters.dshs !== 'ALL' && r.dshsProgram !== filters.dshs) return false; if (filters.payer !== 'ALL') { const pid = resolvePayerId(r.payerOrgId); if (pid !== filters.payer) return false; } if (filters.rentAssist !== 'ALL') { const status = r.feeAssistStatus || (r.needsRentalAssistance ? 'needs' : 'none'); if (filters.rentAssist === 'YES' && (status === 'not_needed' || status === 'none')) return false; if (filters.rentAssist === 'NO' && (status !== 'not_needed' && status !== 'none')) return false; } if(filters.pay !== 'ALL') { const pay = data.payments.find(p => p.residentId === r.id && p.monthId === month); const base = getFeeDueBase(r, month); const feeDue = (r.moveInMonth <= month && !r.feeWaived) ? getMoveInFeeDue(r) : 0; const totalDue = base + feeDue; const amountPaid = parseFloat(pay?.amount || 0); const isPaid = amountPaid >= totalDue; if(filters.pay === 'PAID' && !isPaid) return false; if(filters.pay === 'UNPAID' && isPaid) return false; } return true; }); list.sort((a,b) => { const ha = (a.houseId||'') + (a.roomId||''); const hb = (b.houseId||'') + (b.roomId||''); return ha.localeCompare(hb); }); return list; }, [data.residents, data.payments, org, filters, month, data.houses]);
-        const unassignedResidents = useMemo(() => { const validHouseIds = (data.houses||[]).map(h=>h.id); return (data.residents||[]).filter(r => r.active && (!r.houseId || !validHouseIds.includes(r.houseId))); }, [data.residents, data.houses]);
-        const filteredStats = useMemo(() => { let count = filteredResidents.length; let totalDue = 0; let totalPaid = 0; filteredResidents.forEach(r => { const base = getFeeDueBase(r, month); const fee = (r.moveInMonth <= month && !r.feeWaived) ? getMoveInFeeDue(r) : 0; totalDue += (base + fee); const p = data.payments.find(x => x.residentId === r.id && x.monthId === month); totalPaid += (p?.amount || 0); }); return { count, totalDue, totalPaid }; }, [filteredResidents, data.payments, month]);
-        const stats = useMemo(() => { const scopeHouses = visibleHouses.filter(h => filters.house === 'ALL' || h.id === filters.house); let totalCap = 0; let totalAct = 0; let totalRev = 0; let totalPaid = 0; let totalDue = 0; let totalVacancyLoss = 0; const vacancyList = []; scopeHouses.forEach(h => { const hCap = h.rooms.reduce((s,r)=>s+(parseInt(r.beds)||0), 0); const hAct = (data.residents || []).filter(r => r.active && r.houseId === h.id).length; const hVac = Math.max(0, hCap - hAct); if(hVac > 0) vacancyList.push({ name: h.name, count: hVac }); totalCap += hCap; totalAct += hAct; totalVacancyLoss += (hVac * 750); }); const relevantResidents = (data.residents || []).filter(r => r.active && (filters.house === 'ALL' || r.houseId === filters.house)); relevantResidents.forEach(r => { const p = data.payments.find(x => x.residentId === r.id && x.monthId === month); totalPaid += (p?.amount || 0); totalDue += getFeeDueBase(r, month); if(r.moveInMonth <= month && !r.feeWaived) totalDue += getMoveInFeeDue(r); }); totalRev = totalDue + totalVacancyLoss; return { cap: totalCap, act: totalAct, revGoal: totalRev, paid: totalPaid, due: totalDue, vacancyLoss: totalVacancyLoss, houseCount: scopeHouses.length, vacancies: vacancyList }; }, [visibleHouses, data.residents, data.payments, month, filters.house, org]);
+        
+        const filteredResidents = useMemo(() => {
+            let list = (data.residents || []).filter(r => { 
+                if(!r.active) return false;
+                
+                // --- FIX: Resolve Org via House to prevent missing clients ---
+                const rHouse = (data.houses||[]).find(h => h.id === r.houseId);
+                const effectiveOrg = rHouse ? rHouse.org : r.org;
+                
+                if(org !== 'ALL' && effectiveOrg !== org) return false;
+                if(filters.house !== 'ALL' && r.houseId !== filters.house) return false;
+                
+                if(filters.search && !r.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
+                if(filters.ethnicity !== 'ALL' && r.ethnicity !== filters.ethnicity) return false;
+                if(filters.age !== 'ALL') {
+                    const a = parseInt(r.age || 0);
+                    if(filters.age === 'Unknown') { if (a !== 0) return false; } 
+                    else if (filters.age === '56+') { if (a < 56) return false; } 
+                    else { const [min, max] = filters.age.split('-').map(Number); if(a < min || a > max) return false; }
+                }
+                if (filters.dshs !== 'ALL' && r.dshsProgram !== filters.dshs) return false;
+                if (filters.payer !== 'ALL') { const pid = resolvePayerId(r.payerOrgId); if (pid !== filters.payer) return false; }
+                if (filters.rentAssist !== 'ALL') {
+                    const status = r.feeAssistStatus || (r.needsRentalAssistance ? 'needs' : 'none');
+                    if (filters.rentAssist === 'YES' && (status === 'not_needed' || status === 'none')) return false;
+                    if (filters.rentAssist === 'NO' && (status !== 'not_needed' && status !== 'none')) return false;
+                }
+                if(filters.pay !== 'ALL') {
+                    const pay = data.payments.find(p => p.residentId === r.id && p.monthId === month);
+                    const base = getFeeDueBase(r, month);
+                    const feeDue = (r.moveInMonth <= month && !r.feeWaived) ? getMoveInFeeDue(r) : 0;
+                    const totalDue = base + feeDue;
+                    const amountPaid = parseFloat(pay?.amount || 0);
+                    const isPaid = amountPaid >= totalDue;
+                    if(filters.pay === 'PAID' && !isPaid) return false;
+                    if(filters.pay === 'UNPAID' && isPaid) return false;
+                }
+                return true;
+            });
+            list.sort((a,b) => {
+                const ha = (a.houseId||'') + (a.roomId||'');
+                const hb = (b.houseId||'') + (b.roomId||'');
+                return ha.localeCompare(hb);
+            });
+            return list;
+        }, [data.residents, data.payments, org, filters, month, data.houses]);
+        
+        // Safety Net for Unassigned Residents
+        const unassignedResidents = useMemo(() => {
+            const validHouseIds = (data.houses||[]).map(h=>h.id);
+            return (data.residents||[]).filter(r => r.active && (!r.houseId || !validHouseIds.includes(r.houseId)));
+        }, [data.residents, data.houses]);
+
+        const filteredStats = useMemo(() => {
+            let count = filteredResidents.length;
+            let totalDue = 0; let totalPaid = 0;
+            filteredResidents.forEach(r => {
+                const base = getFeeDueBase(r, month);
+                const fee = (r.moveInMonth <= month && !r.feeWaived) ? getMoveInFeeDue(r) : 0;
+                totalDue += (base + fee);
+                const p = data.payments.find(x => x.residentId === r.id && x.monthId === month);
+                totalPaid += (p?.amount || 0);
+            });
+            return { count, totalDue, totalPaid };
+        }, [filteredResidents, data.payments, month]);
+
+        const stats = useMemo(() => {
+            const scopeHouses = visibleHouses.filter(h => filters.house === 'ALL' || h.id === filters.house);
+            let totalCap = 0; let totalAct = 0; let totalRev = 0; let totalPaid = 0; let totalDue = 0; let totalVacancyLoss = 0;
+            const vacancyList = [];
+            scopeHouses.forEach(h => {
+                // SAFETY CHECK: Ensure rooms exists
+                const rooms = h.rooms || [];
+                const hCap = rooms.reduce((s,r)=>s+(parseInt(r.beds)||0), 0);
+                
+                const hAct = (data.residents || []).filter(r => r.active && r.houseId === h.id).length;
+                const hVac = Math.max(0, hCap - hAct);
+                if(hVac > 0) vacancyList.push({ name: h.name, count: hVac });
+                totalCap += hCap; totalAct += hAct; totalVacancyLoss += (hVac * 750);
+            });
+            const relevantResidents = (data.residents || []).filter(r => r.active && (filters.house === 'ALL' || r.houseId === filters.house));
+            relevantResidents.forEach(r => {
+                const p = data.payments.find(x => x.residentId === r.id && x.monthId === month);
+                totalPaid += (p?.amount || 0);
+                totalDue += getFeeDueBase(r, month);
+                if(r.moveInMonth <= month && !r.feeWaived) totalDue += getMoveInFeeDue(r);
+            });
+            totalRev = totalDue + totalVacancyLoss;
+            return { cap: totalCap, act: totalAct, revGoal: totalRev, paid: totalPaid, due: totalDue, vacancyLoss: totalVacancyLoss, houseCount: scopeHouses.length, vacancies: vacancyList };
+        }, [visibleHouses, data.residents, data.payments, month, filters.house, org]);
 
         if(!fb.auth) return <div style={{height:'100vh',display:'flex',justifyContent:'center',alignItems:'center'}}>Loading Tracker...</div>;
-        if(!currentUser) { return <LoginView users={data.users || []} onLogin={handleLoginUser} />; }
+        if(!currentUser) { return <LoginView users={data.users || []} onLogin={setCurrentUser} />; }
 
         return (
             <div className="container">
@@ -916,7 +914,7 @@
                         <div className="toolbar">
                             {currentUser.role === 'admin' && <button className="button primary" style={{marginRight:8}} onClick={()=>setModal({type:'TEAM'})}>Manage Team</button>}
                             <button className="button primary" style={{marginRight:8}} onClick={()=>setModal({type:'CHANGE_PIN'})}>Change PIN</button>
-                            <button className="button ghost" onClick={handleLogout}>Log Out</button>
+                            <button className="button ghost" onClick={()=>setCurrentUser(null)}>Log Out</button>
                             <div style={{width:1, height:24, background:'rgba(255,255,255,0.3)', margin:'0 8px'}}></div>
                             <select className="select" value={org} onChange={e=>setOrg(e.target.value)}><option value="ALL">All Orgs</option>{uniqueOrgs.map(o=><option key={o} value={o}>{o}</option>)}</select>
                             <select className="select" value={month} onChange={e=>setMonth(e.target.value)}>{monthList.map(m=><option key={m} value={m}>{fmtMon(m)}</option>)}</select>
@@ -972,36 +970,7 @@
 
                 {view === 'dashboard' && (
                     <div className="grid grid-3">
-                        {/* --- NEW: AGENCY FUNDING STATUS --- */}
-                        <div className="card" style={{gridColumn: '1 / -1'}}>
-                            <div style={{fontWeight:700, fontSize:15, marginBottom:10, paddingBottom:8, borderBottom:'1px solid var(--ring)'}}>Agency Funding Status</div>
-                            <div style={{display:'flex', flexWrap:'wrap', gap:10}}>
-                                {RENT_ASSIST_AGENCIES.map(agency => {
-                                    const hasFunding = (data.agencyStatus || {})[agency] !== false; // Default to true if undefined
-                                    return (
-                                        <div 
-                                            key={agency} 
-                                            onClick={() => toggleAgencyStatus(agency)}
-                                            style={{
-                                                padding:'8px 12px', 
-                                                borderRadius:'99px', 
-                                                cursor:'pointer', 
-                                                border: `1px solid ${hasFunding ? '#bbf7d0' : '#fecaca'}`,
-                                                background: hasFunding ? '#f0fdf4' : '#fef2f2',
-                                                color: hasFunding ? '#166534' : '#991b1b',
-                                                fontWeight:600, fontSize:12,
-                                                display:'flex', alignItems:'center', gap:6
-                                            }}
-                                        >
-                                            <div style={{width:8, height:8, borderRadius:'50%', background: hasFunding ? '#22c55e' : '#ef4444'}}></div>
-                                            {agency}: {hasFunding ? 'Has Funding' : 'No Funding'}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-
-                        {/* NEW: UPCOMING INTAKES CARD - MOVED TO TOP - CONDENSED */}
+                        {/* NEW: UPCOMING INTAKES CARD - MOVED TO TOP */}
                         <div className="card" style={{gridColumn: '1 / -1'}}>
                             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, borderBottom:'1px solid var(--ring)', paddingBottom:8}}>
                                 <div style={{fontWeight:700, fontSize:15}}>Upcoming Intakes</div>
@@ -1010,31 +979,31 @@
                             {data.intakeQueue.length === 0 ? (
                                 <div style={{fontSize:13, color:'var(--muted)', fontStyle:'italic', padding:'8px 0'}}>No pending intakes.</div>
                             ) : (
-                                <div style={{display:'flex', flexDirection:'column', gap:6}}>
+                                <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(250px, 1fr))', gap:12}}>
                                     {data.intakeQueue
                                         .sort((a,b) => new Date(a.date || a.graduationDate || '9999-12-31') - new Date(b.date || b.graduationDate || '9999-12-31'))
-                                        .slice(0, 5) // Condensed list, show 5
+                                        .slice(0, 6) // Show top 6
                                         .map(i => (
                                             <div key={i.id} 
                                                  onClick={()=>{ setView('intake'); setModal({type:'INTAKE', data:i}); }}
-                                                 style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 12px', border:'1px solid var(--ring)', borderRadius:8, cursor:'pointer', background:'#f8fafc', transition:'all 0.2s'}}
+                                                 style={{padding:10, border:'1px solid var(--ring)', borderRadius:8, cursor:'pointer', background:'#f8fafc', transition:'all 0.2s'}}
                                                  onMouseOver={e=>e.currentTarget.style.borderColor='var(--brand1)'}
                                                  onMouseOut={e=>e.currentTarget.style.borderColor='var(--ring)'}
                                             >
-                                                <div style={{display:'flex', alignItems:'center', gap:12}}>
-                                                     <div style={{minWidth:80}}>
-                                                        <div style={{fontSize:12, fontWeight:700, color:'var(--brand1)'}}>{fmtDateDisplay(i.date || i.graduationDate)}</div>
-                                                        {i.time && <div style={{fontSize:10, color:'var(--muted)'}}>{fmtTime12(i.time)}</div>}
-                                                     </div>
-                                                     <div>
-                                                        <div style={{fontWeight:600, fontSize:13}}>{i.name} <span className="badge" style={{fontSize:9, backgroundColor: i.type==='DOC'?'#eff6ff':'#f3e8ff', color: i.type==='DOC'?'#1e40af':'#7e22ce', border:'none', marginLeft:6}}>{getTxLabel(i.type, i.facility || i.treatmentCenter)}</span></div>
-                                                        <div style={{fontSize:11, color:'var(--muted)'}}>{i.facility || i.treatmentCenter || 'Unknown'}{i.address ? ` • ${i.address}` : ''}</div>
-                                                     </div>
+                                                <div style={{display:'flex', justifyContent:'space-between', marginBottom:4}}>
+                                                    <span style={{fontWeight:600, fontSize:13}}>{i.name}</span>
+                                                    <span className="badge" style={{fontSize:9, backgroundColor: i.type==='DOC'?'#eff6ff':'#f3e8ff', color: i.type==='DOC'?'#1e40af':'#7e22ce', border:'none'}}>{i.type === 'DOC' ? 'DOC' : 'Tx'}</span>
+                                                </div>
+                                                <div style={{fontSize:11, color:'var(--muted)'}}>
+                                                    📅 {fmtDateDisplay(i.date || i.graduationDate)}
+                                                </div>
+                                                <div style={{fontSize:11, color:'var(--muted)', marginTop:2}}>
+                                                    📍 {i.facility || i.treatmentCenter || 'Unknown'}
                                                 </div>
                                                 
-                                                <div style={{display:'flex', gap:6}}>
-                                                    <button className="button ghost" title="Google Calendar" style={{width:28, height:28, padding:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#555'}} onClick={(e)=>{ e.stopPropagation(); addToGoogleCalendar(i); }}>📅</button>
-                                                    <button className="button ghost" title="Download ICS" style={{width:28, height:28, padding:0, display:'flex', alignItems:'center', justifyContent:'center', color:'#555'}} onClick={(e)=>{ e.stopPropagation(); downloadICS(i); }}>🗓</button>
+                                                <div style={{display:'flex', gap:4, marginTop:8, paddingTop:8, borderTop:'1px solid #e2e8f0'}}>
+                                                    <button className="button" style={{fontSize:10, height:24, padding:'0 8px', flex:1}} onClick={(e)=>{ e.stopPropagation(); addToGoogleCalendar(i); }}>📅 Google</button>
+                                                    <button className="button" style={{fontSize:10, height:24, padding:'0 8px', flex:1}} onClick={(e)=>{ e.stopPropagation(); downloadICS(i); }}>🗓 Apple/Outlook</button>
                                                 </div>
                                             </div>
                                         ))
@@ -1087,22 +1056,12 @@
                                     
                                     // Sort by room/bed inside house
                                     houseResidents.sort((a,b) => (a.roomId||'').localeCompare(b.roomId||'') || (a.bed||0)-(b.bed||0));
-                                    
-                                    // Calc Availability
-                                    const totalBeds = house.rooms.reduce((s,r)=>s+(parseInt(r.beds)||0),0);
-                                    const activeInHouse = data.residents.filter(r=>r.active && r.houseId === house.id).length;
-                                    const openBeds = Math.max(0, totalBeds - activeInHouse);
 
                                     return (
                                         <tbody key={house.id} style={{borderTop:'2px solid var(--ring)'}}>
                                             <tr style={{background:'#e2e8f0'}}>
                                                 <td colSpan={10} style={{fontWeight:700, fontSize:14, padding:'8px 12px', color:'var(--brand1)'}}>
-                                                    {house.name} 
-                                                    <span style={{fontWeight:400, fontSize:12, color:'var(--muted)', marginLeft:6}}>({house.org})</span>
-                                                    {/* --- FIX: SHOW BEDS AVAILABLE IN HEADER --- */}
-                                                    <span className="badge" style={{marginLeft:12, background: openBeds>0 ? '#22c55e' : '#94a3b8', color:'#fff', borderColor:'transparent'}}>
-                                                        {openBeds} Beds Open
-                                                    </span>
+                                                    {house.name} <span style={{fontWeight:400, fontSize:12, color:'var(--muted)'}}>({house.org})</span>
                                                 </td>
                                             </tr>
                                             {houseResidents.map(r => (
@@ -1152,10 +1111,9 @@
                                         <th>Date</th>
                                         <th>Name</th>
                                         <th>From</th>
-                                        <th>Address</th>
                                         <th>Assigned To</th>
                                         <th>Notes</th>
-                                        <th style={{textAlign:'right'}}>Action</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1164,29 +1122,17 @@
                                         return (
                                             <tr key={i.id} onClick={()=>setModal({type:'INTAKE', data:i})} style={{cursor:'pointer'}}>
                                                 <td>{fmtDateDisplay(i.date || i.graduationDate)}<br/><span className="text-sm">{fmtTime12(i.time)}</span></td>
-                                                <td>
-                                                    <strong>{i.name}</strong>
-                                                    {i.docNumber && <div style={{fontSize:11, color:'var(--muted)'}}>DOC #: {i.docNumber}</div>}
-                                                    {/* --- FIX: SMART BADGE LABEL --- */}
-                                                    <br/><span className="badge" style={{backgroundColor: i.type==='DOC'?'#eff6ff':'#f3e8ff', color: i.type==='DOC'?'#1e40af':'#7e22ce', border:'none'}}>{getTxLabel(i.type, i.facility || i.treatmentCenter)}</span>
-                                                </td>
+                                                <td><strong>{i.name}</strong><br/><span className="badge">{i.type}</span></td>
                                                 <td>{i.facility || i.treatmentCenter}</td>
-                                                <td>{i.address || ""}</td>
                                                 <td>{house ? house.name : <span style={{color:'orange'}}>Unassigned</span>}</td>
                                                 <td style={{maxWidth:200, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{i.notes}</td>
-                                                <td style={{textAlign:'right'}}>
-                                                    <div style={{display:'flex', flexDirection:'column', gap:6, alignItems:'flex-end'}}>
-                                                         <button className="button primary" style={{fontSize:11, height:28, width:'100%'}} onClick={(e)=>{ e.stopPropagation(); setModal({type:'ADD_RES', data:{name:i.name, docNumber: i.docNumber, moveInDate:i.date||i.graduationDate, houseId:i.assignedHouseId, fromIntakeId:i.id}}); }}>Promote to Client</button>
-                                                         <div style={{display:'flex', gap:6}}>
-                                                            <button className="button" style={{fontSize:11, height:24, flex:1}} onClick={(e)=>{ e.stopPropagation(); setModal({type:'INTAKE', data:i}); }}>Edit</button>
-                                                            <button className="button" style={{fontSize:11, height:24, color:'red', borderColor:'var(--red)'}} onClick={(e)=>{ e.stopPropagation(); if(confirm('Remove from queue?')) updateStore({intakeQueue: data.intakeQueue.filter(x=>x.id!==i.id)}); }}>Delete</button>
-                                                         </div>
-                                                    </div>
+                                                <td>
+                                                    <button className="button primary" style={{fontSize:11, height:24, padding:'0 8px'}} onClick={(e)=>{ e.stopPropagation(); setModal({type:'ADD_RES', data:{name:i.name, moveInDate:i.date||i.graduationDate, houseId:i.assignedHouseId, fromIntakeId:i.id}}); }}>Promote to Client</button>
                                                 </td>
                                             </tr>
                                         )
                                     })}
-                                    {data.intakeQueue.length === 0 && <tr><td colSpan={7} style={{textAlign:'center', padding:20}}>No pending intakes.</td></tr>}
+                                    {data.intakeQueue.length === 0 && <tr><td colSpan={6} style={{textAlign:'center', padding:20}}>No pending intakes.</td></tr>}
                                 </tbody>
                             </table>
                         </div>
@@ -1208,17 +1154,7 @@
                 )}
                 
                 {modal.type === 'PAY' && ( <PayModal resident={modal.data.c} month={modal.data.m} payments={data.payments} payers={data.payers} onClose={()=>setModal({type:null})} onSave={handleSavePayment} /> )}
-                {/* --- FIX: Use data.houses (all houses) instead of visibleHouses for IntakeModal --- */}
-                {modal.type === 'INTAKE' && ( 
-                    <IntakeModal 
-                        key={modal.data ? modal.data.id : 'new_intake'}
-                        initial={modal.data} 
-                        houses={data.houses} 
-                        intakeQueue={data.intakeQueue} 
-                        onClose={()=>setModal({type:null})} 
-                        onSave={handleSaveIntake} 
-                    /> 
-                )}
+                {modal.type === 'INTAKE' && ( <IntakeModal initial={modal.data} houses={visibleHouses} intakeQueue={data.intakeQueue} onClose={()=>setModal({type:null})} onSave={handleSaveIntake} /> )}
                 {modal.type === 'ADD_HOUSE' && ( <AddHouseModal onClose={()=>setModal({type:null})} onSave={handleCreateHouse} uniqueOrgs={uniqueOrgs} /> )}
                 {modal.type === 'CHANGE_PIN' && ( <ChangePinModal user={currentUser} onClose={()=>setModal({type:null})} onSave={handleUpdatePin} /> )}
                 {modal.type === 'TEAM' && ( <ManageTeamModal users={data.users} onClose={()=>setModal({type:null})} onSave={async (team)=>{ await updateStore({users:team}); setModal({type:null}); showToast('Team Updated'); }} /> )}
